@@ -53,16 +53,16 @@ impl Counter {
     ///  - $next(k, 0) = k$
     ///  -  $next(k, i) = k'$.
     /// 
-    pub fn next(&self, i: usize) -> Vec<i32> {
+    pub fn next(&self, i: usize) -> Counter {
         let m = self.0.len();
-        let mut k = vec![0; self.0.len()];
+        let mut k = Counter(vec![0; self.0.len()]);
 
         if i == 0 {
             k
         } else {
-            k[i] = self.0[i] + 1;
+            k.0[i] = self.0[i] + 1;
             for j in i + 1..m + 1 {
-                k[j] = self.0[j]
+                k.0[j] = self.0[j]
             }
             k
         }

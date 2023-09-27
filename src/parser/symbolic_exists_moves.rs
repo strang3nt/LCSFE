@@ -8,7 +8,7 @@ pub struct SymbolicExistsMove {
     pub base_elem: String, 
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum LogicFormula {
     BaseElem(String, usize),
     True,

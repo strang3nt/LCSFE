@@ -1,7 +1,7 @@
 use crate::parity_game::player::Player;
 use std::collections::BTreeSet;
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Position{
     Existential(String, usize),
     Universal(Vec<BTreeSet<String>>),
