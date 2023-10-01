@@ -1,11 +1,11 @@
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct SymbolicSystem(pub Vec<SymbolicExistsMove>);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SymbolicExistsMove {
-    pub formula: LogicFormula, 
+    pub formula: LogicFormula,
     pub func_name: usize, // TODO this type is only temporary
-    pub base_elem: String, 
+    pub base_elem: String,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
