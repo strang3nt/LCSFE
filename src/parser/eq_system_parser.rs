@@ -55,10 +55,7 @@ pub fn eq_system_parser(
         let and = atom
             .clone()
             .then(
-                op("and")
-                    .to(ExpEq::And as fn(_, _) -> _)
-                    .then(atom)
-                    .repeated(),
+                op("and").to(ExpEq::And as fn(_, _) -> _).then(atom).repeated(),
             )
             .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)));
 

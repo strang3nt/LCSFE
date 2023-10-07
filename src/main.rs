@@ -9,6 +9,8 @@ use parity_game::parity_game::{FixpointType, ParityGame};
 use parity_game::position::Position;
 use parser::{arity_parser, eq_system_parser, fixpoint_system, moves_parser};
 
+use crate::parity_game::position::EvePos;
+
 fn main() {
     let dir = env::current_dir().unwrap();
     print!("\n\n{:?}\n\n", dir);
@@ -63,7 +65,8 @@ fn main() {
         base: base,
     };
 
-    let winner = parity_game.local_check(Position::Eve("a".to_string(), 2));
+    let winner = parity_game
+        .local_check(Position::Eve(EvePos { b: "c".to_string(), i: 2 }));
 
     print!("{:?}", winner);
 }
