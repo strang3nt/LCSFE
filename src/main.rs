@@ -1,15 +1,14 @@
+mod moves_compositor;
 mod parity_game;
 mod parser;
-
 use std::env;
 
 use chumsky::prelude::*;
-use fixpoint_system::Eq;
-use parity_game::parity_game::{FixpointType, ParityGame};
-use parity_game::position::Position;
-use parser::{arity_parser, eq_system_parser, fixpoint_system, moves_parser};
-
-use crate::parity_game::position::EvePos;
+use parity_game::{position::EvePos, position::Position, ParityGame};
+use parser::{
+    arity_parser, basis_parser, eq_system_parser, moves_parser,
+    symbolic_exists_moves::{SymbolicExistsMove, SymbolicExistsMoveComposed},
+};
 
 fn main() {
     let dir = env::current_dir().unwrap();
@@ -40,29 +39,25 @@ fn main() {
         moves_parser::symbolic_moves_parser().parse(symbolic_moves_src);
     println!("{:?}", symbolic_moves);
 
-    let mut base: Vec<String> = symbolic_moves
-        .clone()
-        .unwrap()
-        .0
-        .clone()
-        .iter()
-        .map(|sym| sym.base_elem.clone())
-        .collect::<Vec<String>>();
+    let basis_src =
+        std::fs::read_to_string(std::env::args().nth(4).unwrap()).unwrap();
+    let basis = basis_parser::basis_parser(basis_src);
+    println!("{:?}", basis);
 
-    base.sort();
-    base.dedup();
     let parity_game = ParityGame {
-        fix_types: fixpoint_system
+        fix_system: &fixpoint_system.unwrap(),
+        symbolic_moves: &symbolic_moves
             .unwrap()
-            .0
-            .iter()
-            .map(|eq| match eq {
-                Eq::Max(_, _) => FixpointType::Max,
-                Eq::Min(_, _) => FixpointType::Min,
+            .into_iter()
+            .map(|SymbolicExistsMove { formula, func_name, base_elem }| {
+                SymbolicExistsMoveComposed {
+                    formula,
+                    func_name: func_name.parse().unwrap(),
+                    base_elem,
+                }
             })
             .collect(),
-        symbolic_moves: symbolic_moves.unwrap().clone(),
-        base: base,
+        basis: &basis,
     };
 
     let winner = parity_game

@@ -1,16 +1,20 @@
 #[derive(Debug, Clone)]
-pub struct FixpointSystem(pub Vec<Eq>);
-
-#[derive(Debug, Clone)]
-pub enum Eq {
-    Min(String, ExpEq),
-    Max(String, ExpEq),
+pub enum FixType {
+    Min,
+    Max,
 }
 
 #[derive(Debug, Clone)]
-pub enum ExpEq {
-    And(Box<ExpEq>, Box<ExpEq>),
-    Or(Box<ExpEq>, Box<ExpEq>),
-    CustomOp(String, Vec<ExpEq>),
+pub struct FixEq {
+    pub var: String,
+    pub fix_ty: FixType,
+    pub exp: ExpFixEq,
+}
+
+#[derive(Debug, Clone)]
+pub enum ExpFixEq {
+    And(Box<ExpFixEq>, Box<ExpFixEq>),
+    Or(Box<ExpFixEq>, Box<ExpFixEq>),
+    CustomOp(String, Vec<ExpFixEq>),
     Id(String),
 }

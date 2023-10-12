@@ -1,9 +1,7 @@
-use crate::parity_game::play_data::PlayData;
-use crate::parity_game::player::Player;
-use crate::parity_game::position::Position;
+use super::play_data::PlayData;
+use super::player::Player;
+use super::position::Position;
 use std::collections::{HashMap, HashSet};
-
-use super::position::{AdamPos, EvePos};
 
 pub struct PositionCounterSet<T> {
     eve: HashMap<PlayData, T>,

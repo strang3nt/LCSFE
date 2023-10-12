@@ -1,56 +1,39 @@
+mod play_data;
+pub mod player;
+pub mod position;
+mod position_counter_set;
+
 use std::collections::BTreeSet;
 use std::collections::HashSet;
 use std::time::Instant;
 
-use super::play_data::PlayData;
-use super::position::{AdamPos, EvePos};
-use super::{player::Player, position::Position};
-use crate::parity_game::position_counter_set::{
-    Justification, PositionCounterSet,
-};
+use crate::parser::fixpoint_system::{FixEq, FixType};
 use crate::parser::symbolic_exists_moves::{
-    LogicFormula, SymbolicExistsMove, SymbolicSystem,
+    LogicFormula, SymbolicExistsMoveComposed,
 };
 use itertools::Itertools;
-
-#[derive(Debug)]
-pub enum FixpointType {
-    Max,
-    Min,
-}
+use play_data::PlayData;
+use player::Player;
+use position::{AdamPos, EvePos, Position};
+use position_counter_set::{Justification, PositionCounterSet};
 
 type Playlist = Vec<(PlayData, HashSet<PlayData>)>;
 type Counter = Vec<u32>;
 
-impl SymbolicSystem {
-    pub fn get_formula(&self, c: &EvePos) -> &LogicFormula {
-        let formulas = &self.0;
-        let EvePos { b, i } = c;
-        if let Some(f) = formulas.iter().find(
-            |SymbolicExistsMove { formula: _, base_elem, func_name }| {
-                base_elem == b && func_name == i
-            },
-        ) {
-            &f.formula
-        } else {
-            panic!("Define a symbolic exists move for function {}, w.r.t. base element {}", b, i)
-        }
-    }
+pub struct ParityGame<'a> {
+    pub fix_system: &'a Vec<FixEq>,
+    pub symbolic_moves: &'a Vec<SymbolicExistsMoveComposed>,
+    pub basis: &'a Vec<String>,
 }
 
-pub struct ParityGame {
-    pub fix_types: Vec<FixpointType>,
-    pub symbolic_moves: SymbolicSystem,
-    pub base: Vec<String>,
-}
-impl ParityGame {
+impl<'a> ParityGame<'a> {
     pub fn local_check(&self, c: Position) -> Player {
         println!(
             "The parameters are: \n {:?} \n{:?}\n {:?}",
-            self.fix_types, self.symbolic_moves, self.base
+            self.fix_system, self.symbolic_moves, self.basis
         );
 
-        let m: usize = self.fix_types.len();
+        let m: usize = self.fix_system.len();
 
         self.explore(
             PlayData { pos: c, k: vec![0; m + 1] },
@@ -98,13 +81,14 @@ impl ParityGame {
                 Position::Adam(pos) => self
                     .universal_move(&pos)
                     .into_iter()
-                    .map(|b_i| {
-                        PlayData { pos: Position::Eve(b_i), k: kp.clone() }
+                    .map(|b_i| PlayData {
+                        pos: Position::Eve(b_i),
+                        k: kp.clone(),
                     })
                     .collect::<HashSet<_>>(),
 
                 Position::Eve(b_i) => {
-                    let formula = self.symbolic_moves.get_formula(b_i);
+                    let formula = Self::get_formula(self.symbolic_moves, b_i);
                     self.existential_move(formula)
                         .unwrap()
                         .into_iter()
@@ -156,7 +140,8 @@ impl ParityGame {
                 } else {
                     match &cp {
                         Position::Eve(b_i) => {
-                            let formula = self.symbolic_moves.get_formula(b_i);
+                            let formula =
+                                Self::get_formula(self.symbolic_moves, b_i);
                             decisions.get_mut_p(&Player::Eve).insert(
                                 PlayData { pos: cp.clone(), k: kp.clone() },
                                 (
@@ -215,10 +200,30 @@ impl ParityGame {
         }
     }
 
+    /// TODO: check return type: if should be reference or copy
+    pub fn get_formula(
+        s: &'a Vec<SymbolicExistsMoveComposed>,
+        c: &EvePos,
+    ) -> &'a LogicFormula {
+        let EvePos { b, i } = c;
+        if let Some(f) = s.iter().find(
+            |SymbolicExistsMoveComposed {
+                 formula: _,
+                 base_elem,
+                 func_name,
+             }| { base_elem == b && func_name == i },
+        ) {
+            &f.formula
+        } else {
+            panic!("Define a symbolic exists move for function {}, w.r.t. base element {}", b, i)
+        }
+    }
+
     fn is_empty(&self, p: &Position) -> bool {
         match p {
             Position::Eve(b_i) => {
-                self.symbolic_moves.get_formula(b_i) == &LogicFormula::False
+                Self::get_formula(self.symbolic_moves, b_i)
+                    == &LogicFormula::False
             }
             Position::Adam(x) => HashSet::is_empty(&self.universal_move(x)),
         }
@@ -233,7 +238,7 @@ impl ParityGame {
             LogicFormula::True => Some(c),
             LogicFormula::BaseElem(b, i) => {
                 let mut x =
-                    vec![BTreeSet::<String>::new(); self.fix_types.len()];
+                    vec![BTreeSet::<String>::new(); self.fix_system.len()];
                 x[*i - 1].insert(b.clone());
                 c.insert(AdamPos { x });
                 Some(c)
@@ -249,7 +254,7 @@ impl ParityGame {
                     .multi_cartesian_product()
                     .map(|y| {
                         y.into_iter().fold(
-                            vec![BTreeSet::new(); self.fix_types.len()],
+                            vec![BTreeSet::new(); self.fix_system.len()],
                             |acc, AdamPos { x: elem }| {
                                 acc.into_iter()
                                     .enumerate()
@@ -317,7 +322,7 @@ impl ParityGame {
     /// not have `LogicFormula::True` or `Logic::Formula::False` leaves.
     fn _build_next_move(&self, f: &LogicFormula) -> Vec<BTreeSet<String>> {
         let mut c: Vec<BTreeSet<String>> =
-            vec![BTreeSet::new(); self.fix_types.len()];
+            vec![BTreeSet::new(); self.fix_system.len()];
 
         match f {
             LogicFormula::BaseElem(b, i) => {
@@ -341,7 +346,7 @@ impl ParityGame {
     /// Precondition: the formula `f` is simplified, using the function `reduce(f)`,
     /// and `nextMove(f)` has never been called before.
     /// TODO: values of logic formula true or false should return different values.
-    fn next_move(&self, f: &LogicFormula) -> Option<Vec<BTreeSet<String>>> {
+    fn _next_move(&self, f: &LogicFormula) -> Option<Vec<BTreeSet<String>>> {
         match f {
             LogicFormula::False => None,
             LogicFormula::True => Some(vec![]),
@@ -361,9 +366,9 @@ impl ParityGame {
         if n == 0 {
             false
         } else {
-            let result_for_eve = match self.fix_types[n - 1] {
-                FixpointType::Max => k[n] < kp[n],
-                FixpointType::Min => k[n] > kp[n],
+            let result_for_eve = match self.fix_system[n - 1].fix_ty {
+                FixType::Max => k[n] < kp[n],
+                FixType::Min => k[n] > kp[n],
             };
 
             match p {

@@ -1,4 +1,4 @@
-use crate::parser::fixpoint_system::{Eq, ExpEq, FixpointSystem};
+use crate::parser::fixpoint_system::{ExpFixEq, FixEq, FixType};
 use chumsky::prelude::*;
 
 ///
@@ -27,9 +27,9 @@ use chumsky::prelude::*;
 ///
 pub fn eq_system_parser(
     fun_with_arities: &Vec<(String, usize)>,
-) -> impl Parser<char, FixpointSystem, Error = Simple<char>> {
+) -> impl Parser<char, Vec<FixEq>, Error = Simple<char>> {
     let expr = recursive(|expr| {
-        let var = text::ident().map(ExpEq::Id).padded();
+        let var = text::ident().map(ExpFixEq::Id).padded();
 
         let fun_arguments = fun_with_arities
             .iter()
@@ -44,7 +44,7 @@ pub fn eq_system_parser(
             .collect::<Vec<_>>();
 
         let custom_op = choice(fun_arguments)
-            .map(|(name, args)| ExpEq::CustomOp(name, args));
+            .map(|(name, args)| ExpFixEq::CustomOp(name, args));
 
         let atom = custom_op
             .or(var)
@@ -55,13 +55,18 @@ pub fn eq_system_parser(
         let and = atom
             .clone()
             .then(
-                op("and").to(ExpEq::And as fn(_, _) -> _).then(atom).repeated(),
+                op("and")
+                    .to(ExpFixEq::And as fn(_, _) -> _)
+                    .then(atom)
+                    .repeated(),
             )
             .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)));
 
         let or = and
             .clone()
-            .then(op("or").to(ExpEq::Or as fn(_, _) -> _).then(and).repeated())
+            .then(
+                op("or").to(ExpFixEq::Or as fn(_, _) -> _).then(and).repeated(),
+            )
             .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)));
 
         or
@@ -73,18 +78,14 @@ pub fn eq_system_parser(
         .padded()
         .then(
             fix_type("=max")
-                .to(Eq::Max as fn(_, _) -> _)
-                .or(fix_type("=min").to(Eq::Min as fn(_, _) -> _)),
+                .to(FixType::Max)
+                .or(fix_type("=min").to(FixType::Min)),
         )
         .then(expr.clone())
-        .map(|((var, fix_ty), exp_eq)| fix_ty(var, exp_eq));
+        .map(|((var, fix_ty), exp)| FixEq { var, fix_ty, exp });
 
-    let system_of_equations = equation
-        .clone()
-        .separated_by(just(';'))
-        .allow_trailing()
-        .padded()
-        .map(|eq| FixpointSystem(eq));
+    let system_of_equations =
+        equation.clone().separated_by(just(';')).allow_trailing().padded();
 
     system_of_equations.then_ignore(end())
 }

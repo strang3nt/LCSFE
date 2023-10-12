@@ -1,4 +1,4 @@
-use crate::parity_game::player::Player;
+use super::player::Player;
 use std::collections::BTreeSet;
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]

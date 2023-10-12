@@ -1,4 +1,4 @@
-use crate::parity_game::position::Position;
+use super::position::Position;
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct PlayData {
