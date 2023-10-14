@@ -209,7 +209,7 @@ impl<'a> ParityGame<'a> {
         if let Some(f) = s.iter().find(
             |SymbolicExistsMoveComposed {
                  formula: _,
-                 base_elem,
+                 basis_elem: base_elem,
                  func_name,
              }| { base_elem == b && func_name == i },
         ) {
@@ -236,7 +236,7 @@ impl<'a> ParityGame<'a> {
         match f {
             LogicFormula::False => None,
             LogicFormula::True => Some(c),
-            LogicFormula::BaseElem(b, i) => {
+            LogicFormula::BasisElem(b, i) => {
                 let mut x =
                     vec![BTreeSet::<String>::new(); self.fix_system.len()];
                 x[*i - 1].insert(b.clone());
@@ -325,7 +325,7 @@ impl<'a> ParityGame<'a> {
             vec![BTreeSet::new(); self.fix_system.len()];
 
         match f {
-            LogicFormula::BaseElem(b, i) => {
+            LogicFormula::BasisElem(b, i) => {
                 c[i.clone()].insert(b.clone());
             }
             LogicFormula::Conj(fs) => {

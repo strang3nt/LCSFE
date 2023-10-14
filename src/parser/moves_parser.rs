@@ -27,7 +27,7 @@ pub fn symbolic_moves_parser(
         .then_ignore(just(',').padded())
         .then(text::int(10)))
     .delimited_by(just('['), just(']'))
-    .map(|(base, int)| LogicFormula::BaseElem(base, int.parse().unwrap()));
+    .map(|(base, int)| LogicFormula::BasisElem(base, int.parse().unwrap()));
 
     let truth = text::keyword("true").map(|_| LogicFormula::True);
     let falsehood = text::keyword("false").map(|_| LogicFormula::False);
@@ -62,7 +62,7 @@ pub fn symbolic_moves_parser(
         .map(|((base, fun), formula): ((String, String), LogicFormula)| {
             SymbolicExistsMove {
                 formula: formula,
-                base_elem: base,
+                basis_elem: base,
                 func_name: fun,
             }
         });

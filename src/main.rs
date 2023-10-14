@@ -49,11 +49,11 @@ fn main() {
         symbolic_moves: &symbolic_moves
             .unwrap()
             .into_iter()
-            .map(|SymbolicExistsMove { formula, func_name, base_elem }| {
+            .map(|SymbolicExistsMove { formula, func_name, basis_elem: base_elem }| {
                 SymbolicExistsMoveComposed {
                     formula,
                     func_name: func_name.parse().unwrap(),
-                    base_elem,
+                    basis_elem: base_elem,
                 }
             })
             .collect(),

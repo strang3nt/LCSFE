@@ -5,7 +5,7 @@ pub fn simplify(s: &LogicFormula) -> LogicFormula {
         LogicFormula::Conj(x) => {
             let simplified = x
                 .iter()
-                .map(|i| simplify(i))
+                .map(|i| extract(simplify(i)))
                 .filter(|i| i != &LogicFormula::True)
                 .collect::<Vec<_>>();
 
@@ -15,7 +15,7 @@ pub fn simplify(s: &LogicFormula) -> LogicFormula {
                 if simplified.contains(&LogicFormula::False) {
                     LogicFormula::False
                 } else {
-                    LogicFormula::Conj(simplified)
+                    extract(LogicFormula::Conj(simplified))
                 }
             }
         }
@@ -33,13 +33,22 @@ pub fn simplify(s: &LogicFormula) -> LogicFormula {
                 if simplified.contains(&LogicFormula::True) {
                     LogicFormula::True
                 } else {
-                    LogicFormula::Disj(simplified)
+                    extract(LogicFormula::Disj(simplified))
                 }
             }
         }
         _ => s.clone(),
     }
 }
+
+#[inline]
+fn extract(f: LogicFormula) -> LogicFormula {
+    match f {
+        LogicFormula::Conj(x) if x.len() == 1 => x[0].clone(),
+        LogicFormula::Disj(x) if x.len() == 1 => x[0].clone(),
+        _ => f
+    }
+} 
 
 #[cfg(test)]
 mod tests {
@@ -48,9 +57,9 @@ mod tests {
     #[test]
     fn symplify_conj_false() {
         let formula = LogicFormula::Conj(vec![
-            LogicFormula::BaseElem("a".to_string(), 1),
+            LogicFormula::BasisElem("a".to_string(), 1),
             LogicFormula::False,
-            LogicFormula::BaseElem("b".to_string(), 3),
+            LogicFormula::BasisElem("b".to_string(), 3),
         ]);
         assert_eq!(simplify(&formula), LogicFormula::False);
     }
@@ -58,15 +67,15 @@ mod tests {
     #[test]
     fn symplify_conj_true() {
         let formula = LogicFormula::Conj(vec![
-            LogicFormula::BaseElem("a".to_string(), 1),
+            LogicFormula::BasisElem("a".to_string(), 1),
             LogicFormula::True,
-            LogicFormula::BaseElem("b".to_string(), 3),
+            LogicFormula::BasisElem("b".to_string(), 3),
         ]);
         assert_eq!(
             simplify(&formula),
             LogicFormula::Conj(vec![
-                LogicFormula::BaseElem("a".to_string(), 1),
-                LogicFormula::BaseElem("b".to_string(), 3)
+                LogicFormula::BasisElem("a".to_string(), 1),
+                LogicFormula::BasisElem("b".to_string(), 3)
             ])
         )
     }
@@ -74,9 +83,9 @@ mod tests {
     #[test]
     fn symplify_disj_true() {
         let formula = LogicFormula::Disj(vec![
-            LogicFormula::BaseElem("a".to_string(), 1),
+            LogicFormula::BasisElem("a".to_string(), 1),
             LogicFormula::True,
-            LogicFormula::BaseElem("b".to_string(), 3),
+            LogicFormula::BasisElem("b".to_string(), 3),
         ]);
         assert_eq!(simplify(&formula), LogicFormula::True);
     }
@@ -84,15 +93,15 @@ mod tests {
     #[test]
     fn symplify_disj_false() {
         let formula = LogicFormula::Disj(vec![
-            LogicFormula::BaseElem("a".to_string(), 1),
+            LogicFormula::BasisElem("a".to_string(), 1),
             LogicFormula::False,
-            LogicFormula::BaseElem("b".to_string(), 3),
+            LogicFormula::BasisElem("b".to_string(), 3),
         ]);
         assert_eq!(
             simplify(&formula),
             LogicFormula::Disj(vec![
-                LogicFormula::BaseElem("a".to_string(), 1),
-                LogicFormula::BaseElem("b".to_string(), 3)
+                LogicFormula::BasisElem("a".to_string(), 1),
+                LogicFormula::BasisElem("b".to_string(), 3)
             ])
         )
     }
@@ -100,19 +109,19 @@ mod tests {
     #[test]
     fn symplify_disj_nested_false() {
         let formula = LogicFormula::Disj(vec![
-            LogicFormula::BaseElem("a".to_string(), 1),
+            LogicFormula::BasisElem("a".to_string(), 1),
             LogicFormula::Conj(vec![
-                LogicFormula::BaseElem("a".to_string(), 1),
+                LogicFormula::BasisElem("a".to_string(), 1),
                 LogicFormula::False,
-                LogicFormula::BaseElem("b".to_string(), 3),
+                LogicFormula::BasisElem("b".to_string(), 3),
             ]),
-            LogicFormula::BaseElem("b".to_string(), 3),
+            LogicFormula::BasisElem("b".to_string(), 3),
         ]);
         assert_eq!(
             simplify(&formula),
             LogicFormula::Disj(vec![
-                LogicFormula::BaseElem("a".to_string(), 1),
-                LogicFormula::BaseElem("b".to_string(), 3)
+                LogicFormula::BasisElem("a".to_string(), 1),
+                LogicFormula::BasisElem("b".to_string(), 3)
             ])
         )
     }
@@ -120,24 +129,43 @@ mod tests {
     #[test]
     fn symplify_disj_nested_true() {
         let formula = LogicFormula::Disj(vec![
-            LogicFormula::BaseElem("a".to_string(), 1),
+            LogicFormula::BasisElem("a".to_string(), 1),
             LogicFormula::Conj(vec![
-                LogicFormula::BaseElem("a".to_string(), 1),
+                LogicFormula::BasisElem("a".to_string(), 1),
                 LogicFormula::True,
-                LogicFormula::BaseElem("b".to_string(), 3),
+                LogicFormula::BasisElem("b".to_string(), 3),
             ]),
-            LogicFormula::BaseElem("b".to_string(), 3),
+            LogicFormula::BasisElem("b".to_string(), 3),
         ]);
         assert_eq!(
             simplify(&formula),
             LogicFormula::Disj(vec![
-                LogicFormula::BaseElem("a".to_string(), 1),
+                LogicFormula::BasisElem("a".to_string(), 1),
                 LogicFormula::Conj(vec![
-                    LogicFormula::BaseElem("a".to_string(), 1),
-                    LogicFormula::BaseElem("b".to_string(), 3),
+                    LogicFormula::BasisElem("a".to_string(), 1),
+                    LogicFormula::BasisElem("b".to_string(), 3),
                 ]),
-                LogicFormula::BaseElem("b".to_string(), 3)
+                LogicFormula::BasisElem("b".to_string(), 3)
             ])
         )
     }
+
+    #[test]
+    fn simplify_extract() {
+
+        assert_eq!(simplify(
+            &LogicFormula::Conj(vec![
+                LogicFormula::True,
+                LogicFormula::Conj(vec![
+                    LogicFormula::BasisElem("{d}".to_string(), 1),
+                    LogicFormula::BasisElem("{e}".to_string(), 1)
+                ])
+            ])),
+            LogicFormula::Conj(vec![
+                LogicFormula::BasisElem("{d}".to_string(), 1),
+                LogicFormula::BasisElem("{e}".to_string(), 1)
+            ])
+        )
+    }
+
 }
