@@ -15,6 +15,6 @@ pub struct FixEq {
 pub enum ExpFixEq {
     And(Box<ExpFixEq>, Box<ExpFixEq>),
     Or(Box<ExpFixEq>, Box<ExpFixEq>),
-    CustomOp(String, Vec<ExpFixEq>),
+    Operator(String, Vec<ExpFixEq>),
     Id(String),
 }

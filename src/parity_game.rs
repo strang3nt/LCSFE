@@ -215,7 +215,7 @@ impl<'a> ParityGame<'a> {
         ) {
             &f.formula
         } else {
-            panic!("Define a symbolic exists move for function {}, w.r.t. base element {}", b, i)
+            panic!("No symbolic exists move for basis element {} at position {}", b, i)
         }
     }
 

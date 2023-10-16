@@ -46,9 +46,9 @@ fn extract(f: LogicFormula) -> LogicFormula {
     match f {
         LogicFormula::Conj(x) if x.len() == 1 => x[0].clone(),
         LogicFormula::Disj(x) if x.len() == 1 => x[0].clone(),
-        _ => f
+        _ => f,
     }
-} 
+}
 
 #[cfg(test)]
 mod tests {
@@ -152,9 +152,8 @@ mod tests {
 
     #[test]
     fn simplify_extract() {
-
-        assert_eq!(simplify(
-            &LogicFormula::Conj(vec![
+        assert_eq!(
+            simplify(&LogicFormula::Conj(vec![
                 LogicFormula::True,
                 LogicFormula::Conj(vec![
                     LogicFormula::BasisElem("{d}".to_string(), 1),
@@ -167,5 +166,4 @@ mod tests {
             ])
         )
     }
-
 }

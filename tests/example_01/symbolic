@@ -1,0 +1,15 @@
+phi({a})(p) = false;
+phi({b})(p) = true;
+phi({c})(p) = false;
+phi({d})(p) = true;
+phi({e})(p) = true;
+phi({a})(box) = [{a}, 1] and [{b}, 1] and [{c}, 1];
+phi({b})(box) = [{d}, 1] and [{e}, 1];
+phi({c})(box) = [{c}, 1];
+phi({d})(box) = [{d}, 1];
+phi({e})(box) = [{e}, 1];
+phi({a})(diamond) = [{a}, 1] or [{b}, 1] or [{c}, 1];
+phi({b})(diamond) = [{d}, 1] or [{e}, 1];
+phi({c})(diamond) = [{c}, 1];
+phi({d})(diamond) = [{d}, 1];
+phi({e})(diamond) = [{e}, 1];

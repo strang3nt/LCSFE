@@ -1,7 +1,6 @@
 use chumsky::prelude::*;
 
 use crate::parser::symbolic_exists_moves::{LogicFormula, SymbolicExistsMove};
-
 ///
 /// Returns a parser for the following grammar:
 ///
@@ -14,18 +13,25 @@ use crate::parser::symbolic_exists_moves::{LogicFormula, SymbolicExistsMove};
 /// Atom ::= '[' ID ',' NUM ']' | 'true' | 'false'
 /// ```
 ///
-/// Where $ID\in String$ and `true`, `false` are respectively syntactic sugar for an empty conjunction and
+/// Where `ID in String` and `true`, `false` are respectively syntactic sugar for an empty conjunction and
 /// disjunction.
 ///
 /// > Note that the library `Chumsky`, and in general parser combinators libraries
 /// > have a limited support for left recursion.
 ///
 pub fn symbolic_moves_parser(
+    fun_with_arities: &Vec<(String, usize)>,
+    basis: &Vec<String>
 ) -> impl Parser<char, Vec<SymbolicExistsMove>, Error = Simple<char>> {
-    let base_elem = (text::ident()
-        .padded()
-        .then_ignore(just(',').padded())
-        .then(text::int(10)))
+
+    let basis = basis
+    .iter()
+    .map(|str| just(str.clone()).padded() )
+    .collect::<Vec<_>>();
+
+    let base_elem = (choice(basis.clone())
+        .then_ignore(just(','))
+        .then(text::int(10).padded()))
     .delimited_by(just('['), just(']'))
     .map(|(base, int)| LogicFormula::BasisElem(base, int.parse().unwrap()));
 
@@ -50,25 +56,31 @@ pub fn symbolic_moves_parser(
         .at_least(2)
         .map(|disj| LogicFormula::Disj(disj));
 
-    let text_between_parenthesis =
-        text::ident().padded().delimited_by(just('('), just(')'));
+    let fun_arguments = fun_with_arities
+        .iter()
+        .map(|(str, _)| {
+            just(str.clone()).padded()
+                    .delimited_by(just('('), just(')'))
+            
+        })
+        .collect::<Vec<_>>();
 
     let move_eq = just("phi")
-        .padded()
-        .ignore_then(text_between_parenthesis.clone())
-        .then(text_between_parenthesis)
-        .then_ignore(just('=').padded())
-        .then(or.or(and).or(atom))
-        .map(|((base, fun), formula): ((String, String), LogicFormula)| {
-            SymbolicExistsMove {
-                formula: formula,
-                basis_elem: base,
-                func_name: fun,
-            }
-        });
+    .padded()
+    .ignore_then(choice(basis).delimited_by(just('('), just(')')))
+    .then(choice(fun_arguments))
+    .then_ignore(just('=').padded())
+    .then(or.or(and).or(atom))
+    .map(|((base, fun), formula): ((String, String), LogicFormula)| {
+        SymbolicExistsMove {
+            formula: formula,
+            basis_elem: base,
+            func_name: fun,
+        }
+    });
 
     let symbolic_move_list =
-        move_eq.clone().separated_by(just(';')).allow_trailing().padded();
+        move_eq.separated_by(just(';')).allow_trailing().padded();
 
     symbolic_move_list.then_ignore(end())
 }

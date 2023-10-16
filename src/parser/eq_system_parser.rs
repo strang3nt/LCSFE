@@ -18,15 +18,15 @@ use chumsky::prelude::*;
 /// equations: each equation is a disjunction of conjunctions.
 /// The parser receives an array of characters and if successful returns a type `FixpointSystem`.
 /// Notice that the syntactic category `AndExpEq` has a higher precedence
-/// than `OrExpEq`, this way we enforce the precedence of the operator $\wedge$ over
-/// $\vee$.
+/// than `OrExpEq`, this way we enforce the precedence of the operator `and` over
+/// `or`.
 /// Tokens `ID` and `OP` are a strings, the latter represents the name of an operator provided as input to the parser.
-/// If the goal is to parse $\mu$-calculus formulae, a possible definition for `OP` would be $OP \in \{'diamond', 'box'\}$.
+/// If the goal is to parse mu-calculus formulae, a possible definition for `OP` would be `OP in {'diamond', 'box'}`.
 ///
 /// > Note that the library `Chumsky`, and in general have a limited support for left recursion.
 ///
 pub fn eq_system_parser(
-    fun_with_arities: &Vec<(String, usize)>,
+    fun_with_arities: &Vec<(String, usize)>
 ) -> impl Parser<char, Vec<FixEq>, Error = Simple<char>> {
     let expr = recursive(|expr| {
         let var = text::ident().map(ExpFixEq::Id).padded();
@@ -44,7 +44,7 @@ pub fn eq_system_parser(
             .collect::<Vec<_>>();
 
         let custom_op = choice(fun_arguments)
-            .map(|(name, args)| ExpFixEq::CustomOp(name, args));
+            .map(|(name, args)| ExpFixEq::Operator(name, args));
 
         let atom = custom_op
             .or(var)

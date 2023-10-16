@@ -10,6 +10,8 @@ use parser::{
     symbolic_exists_moves::{SymbolicExistsMove, SymbolicExistsMoveComposed},
 };
 
+use crate::moves_compositor::compose_moves::compose_moves;
+
 fn main() {
     let dir = env::current_dir().unwrap();
     print!("\n\n{:?}\n\n", dir);
@@ -22,46 +24,42 @@ fn main() {
     let arity_src =
         std::fs::read_to_string(std::env::args().nth(1).unwrap()).unwrap();
 
-    let arity_vec = arity_parser::arity_parser().parse(arity_src);
+    let arity_vec = arity_parser::arity_parser().parse(arity_src).unwrap();
     println!("{:?}", arity_vec);
 
     let fixpoint_system_src =
         std::fs::read_to_string(std::env::args().nth(2).unwrap()).unwrap();
     let fixpoint_system =
-        eq_system_parser::eq_system_parser(&arity_vec.unwrap())
-            .parse(fixpoint_system_src);
+        eq_system_parser::eq_system_parser(&arity_vec)
+            .parse(fixpoint_system_src)
+            .unwrap();
 
     println!("{:?}", fixpoint_system);
 
-    let symbolic_moves_src =
-        std::fs::read_to_string(std::env::args().nth(3).unwrap()).unwrap();
-    let symbolic_moves =
-        moves_parser::symbolic_moves_parser().parse(symbolic_moves_src);
-    println!("{:?}", symbolic_moves);
-
     let basis_src =
-        std::fs::read_to_string(std::env::args().nth(4).unwrap()).unwrap();
+    std::fs::read_to_string(std::env::args().nth(3).unwrap()).unwrap();
     let basis = basis_parser::basis_parser(basis_src);
     println!("{:?}", basis);
 
+    let symbolic_moves_src =
+        std::fs::read_to_string(std::env::args().nth(4).unwrap()).unwrap();
+    let symbolic_moves =
+        moves_parser::symbolic_moves_parser(
+            &arity_vec,
+            &basis
+        ).parse(symbolic_moves_src);
+    println!("{:?}", symbolic_moves);
+
     let parity_game = ParityGame {
-        fix_system: &fixpoint_system.unwrap(),
-        symbolic_moves: &symbolic_moves
-            .unwrap()
-            .into_iter()
-            .map(|SymbolicExistsMove { formula, func_name, basis_elem: base_elem }| {
-                SymbolicExistsMoveComposed {
-                    formula,
-                    func_name: func_name.parse().unwrap(),
-                    basis_elem: base_elem,
-                }
-            })
-            .collect(),
+        fix_system: &fixpoint_system,
+        symbolic_moves: &compose_moves(&fixpoint_system, &symbolic_moves.unwrap(), &basis),
         basis: &basis,
     };
 
+    println!("{:?}", parity_game.symbolic_moves);
+
     let winner = parity_game
-        .local_check(Position::Eve(EvePos { b: "c".to_string(), i: 2 }));
+        .local_check(Position::Eve(EvePos { b: "{e}".to_string(), i: 2 }));
 
     print!("{:?}", winner);
 }
