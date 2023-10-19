@@ -1,4 +1,4 @@
-use crate::parser::fixpoint_system::{ExpFixEq, FixEq, FixType};
+use crate::ast::fixpoint_system::{ExpFixEq, FixEq, FixType};
 use chumsky::prelude::*;
 
 ///
@@ -26,7 +26,7 @@ use chumsky::prelude::*;
 /// > Note that the library `Chumsky`, and in general have a limited support for left recursion.
 ///
 pub fn eq_system_parser(
-    fun_with_arities: &Vec<(String, usize)>
+    fun_with_arities: &Vec<(String, usize)>,
 ) -> impl Parser<char, Vec<FixEq>, Error = Simple<char>> {
     let expr = recursive(|expr| {
         let var = text::ident().map(ExpFixEq::Id).padded();

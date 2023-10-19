@@ -1,10 +1,8 @@
 use super::simplify;
-use crate::parser::{
-    fixpoint_system,
-    symbolic_exists_moves::{self, SymbolicExistsMoveComposed},
+use crate::ast::fixpoint_system::{ExpFixEq, FixEq};
+use crate::ast::symbolic_exists_moves::{
+    LogicFormula, SymbolicExistsMove, SymbolicExistsMoveComposed,
 };
-use fixpoint_system::{ExpFixEq, FixEq};
-use symbolic_exists_moves::{LogicFormula, SymbolicExistsMove};
 
 /// Takes a fixpoint system E, and a collection of symbolic exists-moves
 /// for the operators in E. The output are the symbolic exists-moves for
@@ -79,52 +77,55 @@ fn projection(f: &Vec<FixEq>, var: &String) -> usize {
 #[inline]
 fn compose_move_base(
     system: &Vec<FixEq>,
-    base_elem: &String,
+    basis_elem: &String,
     sub_exp: &ExpFixEq,
     s: &Vec<SymbolicExistsMove>,
 ) -> LogicFormula {
     match sub_exp {
-        i @ ExpFixEq::And(_, _) => subst(
-            system,
-            i,
-            base_elem,
-            s,
-            &LogicFormula::Conj(vec![
-                LogicFormula::BasisElem(base_elem.clone(), 1),
-                LogicFormula::BasisElem(base_elem.clone(), 2),
-            ]),
-        ),
-        i @ ExpFixEq::Or(_, _) => subst(
-            system,
-            i,
-            base_elem,
-            s,
-            &LogicFormula::Disj(vec![
-                LogicFormula::BasisElem(base_elem.clone(), 1),
-                LogicFormula::BasisElem(base_elem.clone(), 2),
-            ]),
-        ),
+        i @ ExpFixEq::And(_, _) => LogicFormula::Conj(vec![
+            subst(
+                system,
+                i,
+                s,
+                &LogicFormula::BasisElem(basis_elem.to_owned(), 1),
+            ),
+            subst(
+                system,
+                i,
+                s,
+                &LogicFormula::BasisElem(basis_elem.to_owned(), 2),
+            ),
+        ]),
+        i @ ExpFixEq::Or(_, _) => LogicFormula::Disj(vec![
+            subst(
+                system,
+                i,
+                s,
+                &LogicFormula::BasisElem(basis_elem.to_owned(), 1),
+            ),
+            subst(
+                system,
+                i,
+                s,
+                &LogicFormula::BasisElem(basis_elem.to_owned(), 2),
+            ),
+        ]),
 
-        i @ ExpFixEq::Operator(op, _) => subst(
-            system,
-            i,
-            base_elem,
-            s,
-            s.iter()
-                .find(
-                    |SymbolicExistsMove {
-                         func_name, basis_elem: b, ..
-                     }| {
-                        func_name == op && b == base_elem
-                    },
-                )
-                .map(|SymbolicExistsMove { formula, .. }| formula)
-                .unwrap(),
-        ),
+        i @ ExpFixEq::Operator(op, _) => s
+            .iter()
+            .find(|SymbolicExistsMove { func_name, basis_elem: b, .. }| {
+                func_name == op && b == basis_elem
+            })
+            .map(|SymbolicExistsMove { formula, .. }| {
+                subst(system, &i, s, formula)
+            })
+            .unwrap()
+            .to_owned(),
 
-        ExpFixEq::Id(var) => {
-            LogicFormula::BasisElem(base_elem.clone(), projection(system, &var))
-        }
+        ExpFixEq::Id(var) => LogicFormula::BasisElem(
+            basis_elem.clone(),
+            projection(system, &var),
+        ),
     }
 }
 
@@ -135,69 +136,20 @@ fn compose_move_base(
 fn subst(
     f: &Vec<FixEq>,
     sub_exp: &ExpFixEq,
-    base_elem: &String,
     moves: &Vec<SymbolicExistsMove>,
     curr_formula: &LogicFormula,
 ) -> LogicFormula {
     match curr_formula {
-        LogicFormula::BasisElem(b, i) => match &get_args(sub_exp)[i - 1] {
-            ExpFixEq::And(l, r) => LogicFormula::Conj(vec![
-                subst(
-                    f,
-                    &l,
-                    base_elem,
-                    moves,
-                    &LogicFormula::BasisElem(b.clone(), 1),
-                ),
-                subst(
-                    f,
-                    &r,
-                    base_elem,
-                    moves,
-                    &LogicFormula::BasisElem(b.clone(), 2),
-                ),
-            ]),
-            ExpFixEq::Or(l, r) => LogicFormula::Disj(vec![
-                subst(
-                    f,
-                    &l,
-                    base_elem,
-                    moves,
-                    &LogicFormula::BasisElem(b.clone(), 1),
-                ),
-                subst(
-                    f,
-                    &r,
-                    base_elem,
-                    moves,
-                    &LogicFormula::BasisElem(b.clone(), 2),
-                ),
-            ]),
-            i @ ExpFixEq::Operator(name, _) => moves
-                .iter()
-                .find(
-                    |SymbolicExistsMove {
-                         func_name, basis_elem: b, ..
-                     }| {
-                        func_name == name && b == base_elem
-                    },
-                )
-                .map(|SymbolicExistsMove { formula, .. }| {
-                    subst(f, &i, base_elem, moves, formula)
-                })
-                .unwrap()
-                .clone(),
-            ExpFixEq::Id(var) => {
-                LogicFormula::BasisElem(b.clone(), projection(f, &var))
-            }
-        },
+        LogicFormula::BasisElem(b, i) => {
+            compose_move_base(f, b, &get_args(sub_exp)[i - 1], moves)
+        }
         LogicFormula::Conj(x) => LogicFormula::Conj(
-            x.iter().map(|a| subst(f, sub_exp, base_elem, moves, a)).collect(),
+            x.iter().map(|a| subst(f, sub_exp, moves, a)).collect(),
         ),
         LogicFormula::Disj(x) => LogicFormula::Disj(
-            x.iter().map(|a| subst(f, sub_exp, base_elem, moves, a)).collect(),
+            x.iter().map(|a| subst(f, sub_exp, moves, a)).collect(),
         ),
-        _ => curr_formula.clone(),
+        _ => curr_formula.to_owned(),
     }
 }
 
@@ -215,8 +167,10 @@ fn get_args(exp: &ExpFixEq) -> Vec<ExpFixEq> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fixpoint_system::{ExpFixEq, FixEq, FixType};
-    use symbolic_exists_moves::{LogicFormula, SymbolicExistsMove};
+    use crate::ast::fixpoint_system::{ExpFixEq, FixEq, FixType};
+    use crate::ast::symbolic_exists_moves::{
+        LogicFormula, SymbolicExistsMove, SymbolicExistsMoveComposed,
+    };
 
     #[test]
     ///

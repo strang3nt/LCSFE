@@ -1,4 +1,4 @@
-use crate::parser::symbolic_exists_moves::LogicFormula;
+use crate::ast::symbolic_exists_moves::LogicFormula;
 
 pub fn simplify(s: &LogicFormula) -> LogicFormula {
     match s {

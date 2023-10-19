@@ -1,6 +1,6 @@
 use chumsky::prelude::*;
 
-use crate::parser::symbolic_exists_moves::{LogicFormula, SymbolicExistsMove};
+use crate::ast::symbolic_exists_moves::{LogicFormula, SymbolicExistsMove};
 ///
 /// Returns a parser for the following grammar:
 ///
@@ -21,13 +21,10 @@ use crate::parser::symbolic_exists_moves::{LogicFormula, SymbolicExistsMove};
 ///
 pub fn symbolic_moves_parser(
     fun_with_arities: &Vec<(String, usize)>,
-    basis: &Vec<String>
+    basis: &Vec<String>,
 ) -> impl Parser<char, Vec<SymbolicExistsMove>, Error = Simple<char>> {
-
-    let basis = basis
-    .iter()
-    .map(|str| just(str.clone()).padded() )
-    .collect::<Vec<_>>();
+    let basis =
+        basis.iter().map(|str| just(str.clone()).padded()).collect::<Vec<_>>();
 
     let base_elem = (choice(basis.clone())
         .then_ignore(just(','))
@@ -59,25 +56,23 @@ pub fn symbolic_moves_parser(
     let fun_arguments = fun_with_arities
         .iter()
         .map(|(str, _)| {
-            just(str.clone()).padded()
-                    .delimited_by(just('('), just(')'))
-            
+            just(str.clone()).padded().delimited_by(just('('), just(')'))
         })
         .collect::<Vec<_>>();
 
     let move_eq = just("phi")
-    .padded()
-    .ignore_then(choice(basis).delimited_by(just('('), just(')')))
-    .then(choice(fun_arguments))
-    .then_ignore(just('=').padded())
-    .then(or.or(and).or(atom))
-    .map(|((base, fun), formula): ((String, String), LogicFormula)| {
-        SymbolicExistsMove {
-            formula: formula,
-            basis_elem: base,
-            func_name: fun,
-        }
-    });
+        .padded()
+        .ignore_then(choice(basis).delimited_by(just('('), just(')')))
+        .then(choice(fun_arguments))
+        .then_ignore(just('=').padded())
+        .then(or.or(and).or(atom))
+        .map(|((base, fun), formula): ((String, String), LogicFormula)| {
+            SymbolicExistsMove {
+                formula: formula,
+                basis_elem: base,
+                func_name: fun,
+            }
+        });
 
     let symbolic_move_list =
         move_eq.separated_by(just(';')).allow_trailing().padded();

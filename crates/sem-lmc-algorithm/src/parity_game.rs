@@ -7,8 +7,8 @@ use std::collections::BTreeSet;
 use std::collections::HashSet;
 use std::time::Instant;
 
-use crate::parser::fixpoint_system::{FixEq, FixType};
-use crate::parser::symbolic_exists_moves::{
+use crate::ast::fixpoint_system::{FixEq, FixType};
+use crate::ast::symbolic_exists_moves::{
     LogicFormula, SymbolicExistsMoveComposed,
 };
 use itertools::Itertools;
@@ -29,8 +29,18 @@ pub struct ParityGame<'a> {
 impl<'a> ParityGame<'a> {
     pub fn local_check(&self, c: Position) -> Player {
         println!(
-            "The parameters are: \n {:?} \n{:?}\n {:?}",
-            self.fix_system, self.symbolic_moves, self.basis
+            "The parameters are:\n\n{}\n\n{}\n\n{:?}\n",
+            self.fix_system
+                .iter()
+                .map(|x| format!("{};", x))
+                .collect::<Vec<String>>()
+                .join("\n"),
+            self.symbolic_moves
+                .iter()
+                .map(|x| format!("{};", x))
+                .collect::<Vec<String>>()
+                .join("\n"),
+            self.basis
         );
 
         let m: usize = self.fix_system.len();
@@ -215,7 +225,10 @@ impl<'a> ParityGame<'a> {
         ) {
             &f.formula
         } else {
-            panic!("No symbolic exists move for basis element {} at position {}", b, i)
+            panic!(
+                "No symbolic exists move for basis element {} at position {}",
+                b, i
+            )
         }
     }
 
