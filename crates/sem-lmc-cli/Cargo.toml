@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 sem-lmc-pg = { path = "../sem-lmc-pg" }
 sem-lmc-common = { path = "../sem-lmc-common" }
+sem-lmc-algorithm = { path = "../sem-lmc-algorithm" }
 clap = { version = "4.0", features = ["derive"] }

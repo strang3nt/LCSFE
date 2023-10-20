@@ -1,5 +1,3 @@
-use std::fmt::{self, format};
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SymbolicExistsMoveComposed {
     pub formula: LogicFormula,
@@ -23,8 +21,8 @@ pub enum LogicFormula {
     Disj(Vec<LogicFormula>),
 }
 
-impl fmt::Display for LogicFormula {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for LogicFormula {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let to_vec_of_str = |xs: &Vec<LogicFormula>| {
             xs.iter().map(|x| format!("{}", x)).collect::<Vec<String>>()
         };
@@ -45,8 +43,8 @@ impl fmt::Display for LogicFormula {
     }
 }
 
-impl fmt::Display for SymbolicExistsMoveComposed {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for SymbolicExistsMoveComposed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "phi({})({}) = {}",

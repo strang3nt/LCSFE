@@ -5,10 +5,11 @@ mod pg_to_pbe;
 use pg::PG;
 use sem_lmc_algorithm::{
     algorithm::{EvePos, ParityGame, Player, Position},
-    ast::{fixpoint_system::FixEq, symbolic_exists_moves::SymbolicExistsMove},
     moves_compositor::compose_moves::compose_moves,
 };
 use sem_lmc_common::SpecOutput;
+use sem_lmc_algorithm::ast::{fixpoint_system::FixEq, symbolic_exists_moves::SymbolicExistsMove};
+
 
 pub struct ParityGameSpec {
     pg: PG,

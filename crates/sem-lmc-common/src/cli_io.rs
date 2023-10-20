@@ -3,7 +3,10 @@ use sem_lmc_algorithm::ast::{
 };
 
 pub trait SpecOutput {
+    /// Gets the system of fixpoint equation
     fn get_sys(&self) -> Result<Vec<FixEq>, Box<dyn std::error::Error>>;
+
+    /// Gets the symbolic existential-moves
     fn get_sem(
         &self,
     ) -> Result<Vec<SymbolicExistsMove>, Box<dyn std::error::Error>>;

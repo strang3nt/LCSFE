@@ -8,7 +8,7 @@ pub mod parse {
     pub use crate::parser::parse_fixpoint_system;
     pub use crate::parser::parse_fun_arity;
     pub use crate::parser::parse_symbolic_system;
-    pub use crate::parser::ParseError;
+    pub use crate::parser::ParserError;
 }
 
 pub mod algorithm {
