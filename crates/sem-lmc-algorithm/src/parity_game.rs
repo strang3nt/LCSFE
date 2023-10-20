@@ -20,13 +20,13 @@ use position_counter_set::{Justification, PositionCounterSet};
 type Playlist = Vec<(PlayData, HashSet<PlayData>)>;
 type Counter = Vec<u32>;
 
-pub struct ParityGame<'a> {
+pub struct LocalAlgorithm<'a> {
     pub fix_system: &'a Vec<FixEq>,
     pub symbolic_moves: &'a Vec<SymbolicExistsMoveComposed>,
     pub basis: &'a Vec<String>,
 }
 
-impl<'a> ParityGame<'a> {
+impl<'a> LocalAlgorithm<'a> {
     pub fn local_check(&self, c: Position) -> Player {
         println!(
             "The parameters are:\n\n{}\n\n{}\n\n{:?}\n",
@@ -111,9 +111,7 @@ impl<'a> ParityGame<'a> {
             };
 
             let cp = pi.iter().next().unwrap().clone();
-            println!("{:?}", pi);
             pi.remove(&cp);
-            println!("{:?}", &cp);
             pl.push((play_data, pi));
             self.explore(cp, pl, assumptions, decisions)
         }
@@ -210,7 +208,6 @@ impl<'a> ParityGame<'a> {
         }
     }
 
-    /// TODO: check return type: if should be reference or copy
     pub fn get_formula(
         s: &'a Vec<SymbolicExistsMoveComposed>,
         c: &EvePos,
@@ -330,43 +327,6 @@ impl<'a> ParityGame<'a> {
         }
     }
 
-    /// TODO eliminate recursion
-    /// A pre-condition of this function is that the argument `f: &LogicFormula` does
-    /// not have `LogicFormula::True` or `Logic::Formula::False` leaves.
-    fn _build_next_move(&self, f: &LogicFormula) -> Vec<BTreeSet<String>> {
-        let mut c: Vec<BTreeSet<String>> =
-            vec![BTreeSet::new(); self.fix_system.len()];
-
-        match f {
-            LogicFormula::BasisElem(b, i) => {
-                c[i.clone()].insert(b.clone());
-            }
-            LogicFormula::Conj(fs) => {
-                for f in fs {
-                    let mut j = 0;
-                    for fj in self._build_next_move(f) {
-                        c[j].extend(fj);
-                        j = j + 1;
-                    }
-                }
-            }
-            LogicFormula::Disj(fs) => c = self._build_next_move(&fs[0]),
-            _ => panic!("Formula {:?} has true or false leaves", f),
-        };
-        c
-    }
-
-    /// Precondition: the formula `f` is simplified, using the function `reduce(f)`,
-    /// and `nextMove(f)` has never been called before.
-    /// TODO: values of logic formula true or false should return different values.
-    fn _next_move(&self, f: &LogicFormula) -> Option<Vec<BTreeSet<String>>> {
-        match f {
-            LogicFormula::False => None,
-            LogicFormula::True => Some(vec![]),
-            _ => Some(self._build_next_move(f)),
-        }
-    }
-
     pub fn le(&self, k: &[u32], kp: &[u32], p: &Player) -> bool {
         let mut n = 0;
         let m = k.len();
@@ -393,16 +353,15 @@ impl<'a> ParityGame<'a> {
 
     /// Implements a total order for the counter:
     ///
-    ///  - it is the case that $k <_\exists k'$, whenever
-    ///    the largest $i$ such that $k_i\neq k'_i$ is the
+    ///  - it is the case that `k < k'` for the existential player, whenever
+    ///    the largest `i` such that `k_i != k'_i` is the
     ///    index of a greatest fixpoint, that is to say whenever
     ///    `self.fix_types[i]` has value `Max`, or if the value is
-    ///    `Min` and $k_i > k'_i$
-    ///  - we say $k <_\forall k'$ whenever it is not true that
-    ///    $k' <_\exists k$
-    ///  - $k \leq_P k'$ whenever $k <_P k$ or $k = k$.
+    ///    `Min` and `k_i > k'_i`,
+    ///  - we say `k < k'` for the universal player whenever it is not true that
+    ///    $k' < k$ for the existential player,
+    ///  - `k <= k'` for a player whenever `k < k'` or $k = k'$, for a player.
     ///
-    /// > Notation: $k$, $k'$ are vectors, and $P\in \{\exists, \forall\}$.
     pub fn leq(&self, k: &[u32], kp: &[u32], p: &Player) -> bool {
         k == kp || self.le(k, kp, p)
     }
@@ -411,8 +370,8 @@ impl<'a> ParityGame<'a> {
     /// with the number of times the priority has been encountered in the play
     /// since a higher priority was last faced. Note that:
     ///
-    ///  - $next(k, 0) = k$
-    ///  -  $next(k, i) = k'$.
+    ///  - `next(k, 0) = k`
+    ///  - `next(k, i) = k'`.
     ///
     fn next(k: &Counter, i: usize) -> Counter {
         let mut kp = vec![0; k.len()];

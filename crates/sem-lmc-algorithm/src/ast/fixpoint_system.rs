@@ -35,6 +35,7 @@ impl fmt::Display for ExpFixEq {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let sub_arg = |x: &ExpFixEq| match x {
             ExpFixEq::Id(s) => s.to_owned(),
+            ExpFixEq::Operator(_, _) => format!("{}", x),
             _ => format!("({})", x),
         };
 

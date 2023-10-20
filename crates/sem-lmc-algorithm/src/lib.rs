@@ -14,7 +14,7 @@ pub mod parse {
 pub mod algorithm {
     pub use crate::parity_game::player::Player;
     pub use crate::parity_game::position::{AdamPos, EvePos, Position};
-    pub use crate::parity_game::ParityGame;
+    pub use crate::parity_game::LocalAlgorithm;
 }
 
 // use std::env;

@@ -7,13 +7,13 @@ mod moves_parser;
 
 #[derive(Debug, Clone)]
 pub struct ParserError {
-    details: String
+    details: String,
 }
 
 impl ParserError {
     pub fn new(details: String) -> ParserError {
-            ParserError { details }
-        }
+        ParserError { details }
+    }
 }
 
 impl std::error::Error for ParserError {
@@ -24,11 +24,7 @@ impl std::error::Error for ParserError {
 
 impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Parse error(s):\n{}",
-            self.details
-        )
+        write!(f, "Parse error(s):\n{}", self.details)
     }
 }
 
@@ -45,31 +41,41 @@ pub fn parse_symbolic_system(
     basis: Vec<String>,
     src: String,
 ) -> Result<Vec<SymbolicExistsMove>, ParserError> {
-    moves_parser::symbolic_moves_parser(&arity, &basis)
-        .parse(src).map_err(|errs|
+    moves_parser::symbolic_moves_parser(&arity, &basis).parse(src).map_err(
+        |errs| {
             ParserError::new(
-            errs
-                .into_iter()
-                .map(|e| format!("{}", e.to_string())).collect::<Vec<String>>()
-                .join("\n- ")))
+                errs.into_iter()
+                    .map(|e| format!("{}", e.to_string()))
+                    .collect::<Vec<String>>()
+                    .join("\n- "),
+            )
+        },
+    )
 }
 
-pub fn parse_fixpoint_system(arity: Vec<(String, usize)>, src: String) -> Result<Vec<FixEq>, ParserError> {
-    eq_system_parser::eq_system_parser(&arity).parse(src).map_err(|errs|
+pub fn parse_fixpoint_system(
+    arity: Vec<(String, usize)>,
+    src: String,
+) -> Result<Vec<FixEq>, ParserError> {
+    eq_system_parser::eq_system_parser(&arity).parse(src).map_err(|errs| {
         ParserError::new(
-        errs
-            .into_iter()
-            .map(|e| format!("{}", e.to_string())).collect::<Vec<String>>()
-            .join("\n- ")))
+            errs.into_iter()
+                .map(|e| format!("{}", e.to_string()))
+                .collect::<Vec<String>>()
+                .join("\n- "),
+        )
+    })
 }
 
 pub fn parse_fun_arity(
     src: String,
 ) -> Result<Vec<(String, usize)>, ParserError> {
-    arity_parser::arity_parser().parse(src).map_err(|errs|
+    arity_parser::arity_parser().parse(src).map_err(|errs| {
         ParserError::new(
-        errs
-            .into_iter()
-            .map(|e| format!("{}", e.to_string())).collect::<Vec<String>>()
-            .join("\n- ")))
+            errs.into_iter()
+                .map(|e| format!("{}", e.to_string()))
+                .collect::<Vec<String>>()
+                .join("\n- "),
+        )
+    })
 }

@@ -3,13 +3,14 @@ mod pg;
 mod pg_to_pbe;
 
 use pg::PG;
+use sem_lmc_algorithm::ast::{
+    fixpoint_system::FixEq, symbolic_exists_moves::SymbolicExistsMove,
+};
 use sem_lmc_algorithm::{
-    algorithm::{EvePos, ParityGame, Player, Position},
+    algorithm::{EvePos, LocalAlgorithm, Player, Position},
     moves_compositor::compose_moves::compose_moves,
 };
 use sem_lmc_common::SpecOutput;
-use sem_lmc_algorithm::ast::{fixpoint_system::FixEq, symbolic_exists_moves::SymbolicExistsMove};
-
 
 pub struct ParityGameSpec {
     pg: PG,
@@ -50,7 +51,7 @@ impl SpecOutput for ParityGameSpec {
     fn get_ver(&self) -> String {
         let basis = &vec!["true".to_string()];
 
-        let algo = ParityGame {
+        let algo = LocalAlgorithm {
             fix_system: &self.get_sys().unwrap(),
             symbolic_moves: &compose_moves(
                 &self.get_sys().unwrap(),
@@ -76,6 +77,5 @@ impl SpecOutput for ParityGameSpec {
         };
 
         format!("Player {} wins from vertex {}", winner, self.node)
-
     }
 }

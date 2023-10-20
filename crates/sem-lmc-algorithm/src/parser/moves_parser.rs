@@ -10,7 +10,7 @@ use crate::ast::symbolic_exists_moves::{LogicFormula, SymbolicExistsMove};
 /// LogicFormula ::= Disjunction
 /// Conjunction ::= Atom ('and' Atom)*
 /// Disjunction ::= Conjunction ('or' Conjunction)*
-/// Atom ::= '[' ID ',' NUM ']' | 'true' | 'false'
+/// Atom ::= '[' ID ',' NUM ']' | 'true' | 'false' | '(' LogicFormula ')'
 /// ```
 ///
 /// Where `ID in String` and `true`, `false` are respectively syntactic sugar for an empty conjunction and
@@ -26,34 +26,39 @@ pub fn symbolic_moves_parser(
     let basis =
         basis.iter().map(|str| just(str.clone()).padded()).collect::<Vec<_>>();
 
-    let base_elem = (choice(basis.clone())
-        .then_ignore(just(','))
-        .then(text::int(10).padded()))
-    .delimited_by(just('['), just(']'))
-    .map(|(base, int)| LogicFormula::BasisElem(base, int.parse().unwrap()));
+    let logic_formula = recursive(|logic_formula| {
+        let base_elem = (choice(basis.clone())
+            .then_ignore(just(','))
+            .then(text::int(10).padded()))
+        .delimited_by(just('['), just(']'))
+        .map(|(base, int)| LogicFormula::BasisElem(base, int.parse().unwrap()));
 
-    let truth = text::keyword("true").map(|_| LogicFormula::True);
-    let falsehood = text::keyword("false").map(|_| LogicFormula::False);
+        let truth = text::keyword("true").map(|_| LogicFormula::True);
+        let falsehood = text::keyword("false").map(|_| LogicFormula::False);
 
-    let atom = base_elem.or(truth).or(falsehood);
+        let atom = base_elem
+            .or(truth)
+            .or(falsehood)
+            .or(logic_formula.delimited_by(just('('), just(')')));
 
-    let op = |c| just(c).padded();
+        let op = |c| just(c).padded();
 
-    let and = atom
-        .clone()
-        .separated_by(op("and"))
-        .at_least(2)
-        .map(|conj| LogicFormula::Conj(conj));
+        let and = atom
+            .clone()
+            .separated_by(op("and"))
+            .map(|conj| LogicFormula::Conj(conj));
 
-    let and_or_atom = and.clone().or(atom.clone());
+        let and_or_atom = and.clone().or(atom.clone());
 
-    let or = and_or_atom
-        .clone()
-        .separated_by(op("or"))
-        .at_least(2)
-        .map(|disj| LogicFormula::Disj(disj));
+        let or = and_or_atom
+            .clone()
+            .separated_by(op("or"))
+            .map(|disj| LogicFormula::Disj(disj));
 
-    let fun_arguments = fun_with_arities
+        or
+    });
+
+    let fun_name = fun_with_arities
         .iter()
         .map(|(str, _)| {
             just(str.clone()).padded().delimited_by(just('('), just(')'))
@@ -63,9 +68,9 @@ pub fn symbolic_moves_parser(
     let move_eq = just("phi")
         .padded()
         .ignore_then(choice(basis).delimited_by(just('('), just(')')))
-        .then(choice(fun_arguments))
+        .then(choice(fun_name))
         .then_ignore(just('=').padded())
-        .then(or.or(and).or(atom))
+        .then(logic_formula)
         .map(|((base, fun), formula): ((String, String), LogicFormula)| {
             SymbolicExistsMove {
                 formula: formula,
