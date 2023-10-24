@@ -1,14 +1,20 @@
 use std::io::BufReader;
 
 use clap::{Parser, Subcommand};
-use sem_lmc_algorithm::algorithm::{EvePos, Position};
-use sem_lmc_common::SpecOutput;
+use sem_lmc_algorithm::{
+    algorithm::{EvePos, Position},
+    normalizer::normalize_system,
+};
+use sem_lmc_common::{InputFlags, SpecOutput};
 use sem_lmc_pg::ParityGameSpec;
 
 #[derive(Debug, Parser)]
 #[command(name = "semlmc")]
 #[command(about = "A local model checker which leverages parity games and Symbolic Existential Moves", long_about = None)]
 struct Cli {
+    /// If enabled, the underlying system of fixpoint equations is normalized during the preprocessing phase
+    #[arg(short, long)]
+    normalize: bool,
     #[command(subcommand)]
     command: Commands,
 }
@@ -46,7 +52,7 @@ enum Commands {
         #[arg(short, long)]
         game_path: std::path::PathBuf,
 
-        /// The node from which you want to verify the selected player has a winning strategy
+        /// The node from which is verified whether if the selected player has a winning strategy
         #[arg(short, long)]
         node: String,
     },
@@ -56,6 +62,8 @@ enum Commands {
 
 fn main() {
     let args = Cli::parse();
+
+    let normalize = args.normalize;
 
     match args.command {
         Commands::Debug {
@@ -81,6 +89,13 @@ fn main() {
                 fix_system_src.unwrap(),
             )
             .unwrap();
+
+            let fix_system = if normalize {
+                normalize_system(&fix_system)
+            } else {
+                fix_system
+            };
+
             let basis =
                 sem_lmc_algorithm::parse::parse_basis(basis_src.unwrap())
                     .unwrap();
@@ -107,7 +122,11 @@ fn main() {
                 ),
                 node,
             );
-            println!("{}", p.get_ver())
+            println!(
+                "{}",
+                p.verify(&InputFlags { normalize })
+                    .expect("Something unexpected happened")
+            )
         }
         Commands::MuAld { .. } => {
             unimplemented!()
