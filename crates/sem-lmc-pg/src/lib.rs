@@ -14,32 +14,24 @@ use sem_lmc_common::SpecOutput;
 
 pub struct ParityGameSpec {
     pg: PG,
-    player: bool,
     node: String,
 }
 
 impl ParityGameSpec {
     pub fn new(
         src: &mut std::io::BufReader<std::fs::File>,
-        player: bool,
         node: String,
     ) -> ParityGameSpec {
         let mut pg = parser::parse_pg(src).unwrap();
-        pg.0.sort_by(|a, b| a.0.id.partial_cmp(&b.0.id).unwrap());
+        pg.0.sort_by(|a, b| a.0.parity.partial_cmp(&b.0.parity).unwrap());
 
-        println!("{:#?}", pg);
-        ParityGameSpec { pg: pg, player, node }
+        ParityGameSpec { pg: pg, node }
     }
 }
 
 impl SpecOutput for ParityGameSpec {
     fn get_sys(&self) -> Result<Vec<FixEq>, Box<dyn std::error::Error>> {
-        let player = match self.player {
-            false => pg::Player::Eve,
-            true => pg::Player::Adam,
-        };
-
-        Ok(pg_to_pbe::pg_to_pbe(&self.pg, player))
+        Ok(pg_to_pbe::pg_to_pbe(&self.pg, pg::Player::Eve))
     }
 
     fn get_sem(
@@ -49,16 +41,16 @@ impl SpecOutput for ParityGameSpec {
     }
 
     fn get_ver(&self) -> String {
-        let basis = &vec!["true".to_string()];
+        let basis = vec!["true".to_string()];
 
         let algo = LocalAlgorithm {
             fix_system: &self.get_sys().unwrap(),
             symbolic_moves: &compose_moves(
                 &self.get_sys().unwrap(),
                 &vec![],
-                basis,
+                &basis,
             ),
-            basis,
+            basis: &basis,
         };
         let node = self
             .pg

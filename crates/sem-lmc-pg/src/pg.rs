@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub struct PG(pub Vec<(Node, Vec<u32>)>);
+pub struct PG(pub Vec<(Node, Vec<usize>)>);
 
 #[derive(Debug)]
 

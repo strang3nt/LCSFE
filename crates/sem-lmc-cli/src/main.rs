@@ -45,10 +45,8 @@ enum Commands {
         /// A path to a file containing a parity game
         #[arg(short, long)]
         game_path: std::path::PathBuf,
-        /// A boolean value (true or false, 0 or 1) which represents the player
-        #[arg(short, long)]
-        player: bool,
-        /// The node you want to verify the selected player has a winning strategy
+
+        /// The node from which you want to verify the selected player has a winning strategy
         #[arg(short, long)]
         node: String,
     },
@@ -102,12 +100,11 @@ fn main() {
             println!("{:?}", parity_game.local_check(pos));
         }
 
-        Commands::Pg { game_path, player, node } => {
+        Commands::Pg { game_path, node } => {
             let p = ParityGameSpec::new(
                 &mut BufReader::new(
                     std::fs::File::open(game_path.as_path()).unwrap(),
                 ),
-                player,
                 node,
             );
             println!("{}", p.get_ver())

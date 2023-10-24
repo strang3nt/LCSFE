@@ -3,10 +3,9 @@ use sem_lmc_algorithm::ast::fixpoint_system::{ExpFixEq, FixEq, FixType};
 
 pub fn pg_to_pbe(pg: &PG, p: Player) -> Vec<FixEq> {
     pg.0.iter().fold(vec![], |mut acc, (n, adj_list)| {
-        let i = n.id;
-        let x = format!("x_{}", i);
+        let x = format!("x_{}", n.id);
 
-        let fix_ty = if i % 2 == 0 { FixType::Max } else { FixType::Min };
+        let fix_ty = if n.parity % 2 == 0 { FixType::Max } else { FixType::Min };
 
         let mut adj_list_iter = adj_list.iter();
         let first = ExpFixEq::Id(format!("x_{}", adj_list_iter.next().unwrap()));

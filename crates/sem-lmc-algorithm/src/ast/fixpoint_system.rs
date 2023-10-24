@@ -1,19 +1,19 @@
 use std::fmt;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum FixType {
     Min,
     Max,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FixEq {
     pub var: String,
     pub fix_ty: FixType,
     pub exp: ExpFixEq,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ExpFixEq {
     And(Box<ExpFixEq>, Box<ExpFixEq>),
     Or(Box<ExpFixEq>, Box<ExpFixEq>),

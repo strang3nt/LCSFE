@@ -33,17 +33,21 @@ pub fn parse_pg(src: &mut BufReader<File>) -> Result<PG, Error> {
                     } else {
                         Player::Adam
                     }, //
-                    name: str[4]
-                        .trim_end_matches("\";")
-                        .trim_start_matches('"')
-                        .trim()
-                        .to_owned(),
+                    name: if str.len() == 4 {
+                        str[0].parse::<String>().unwrap()
+                    } else {
+                        str[4]
+                            .trim_end_matches("\";")
+                            .trim_start_matches('"')
+                            .trim()
+                            .to_owned()
+                    },
                     id: str[0].parse::<u32>().unwrap(),
                     parity: str[1].parse::<u32>().unwrap(),
                 };
                 let adj_list = str[3]
                     .split(',')
-                    .map(|x| x.parse::<u32>().unwrap())
+                    .map(|x| x.parse::<usize>().unwrap())
                     .collect::<Vec<_>>();
 
                 acc.map(|mut pg| {

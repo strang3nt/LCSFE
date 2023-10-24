@@ -4,7 +4,7 @@ use chumsky::prelude::*;
 ///
 /// Returns a parser for the following grammar:
 ///
-/// ```
+///
 /// EqList ::= Eq EqList ';' | Eq ';'
 /// Eq ::= ID '=max' ExpEq | ID '=min' ExpEq
 /// ExpEq ::= OrExpEq
@@ -12,7 +12,7 @@ use chumsky::prelude::*;
 /// AndExpEq ::= Atom ('and' Atom)*
 /// OrExpEq ::= AndExpEq ('or' AndExpEq)*
 /// CustomExpEq ::= OP '(' ExpEq (',' ExpEq)* ')'
-/// ```
+///
 ///
 /// As it is, this grammar is able to parse only a normalized system of symbolic
 /// equations: each equation is a disjunction of conjunctions.
