@@ -1,18 +1,22 @@
 use crate::ast::fixpoint_system::{ExpFixEq, FixEq, FixType};
 use std::collections::HashMap;
 
-pub fn normalize_system(fix_system: &Vec<FixEq>) -> Vec<FixEq> {
+pub fn normalize_system(
+    fix_system: &Vec<FixEq>,
+) -> (Vec<FixEq>, HashMap<String, String>) {
     let mut var_map = fix_system
         .iter()
         .enumerate()
         .map(|(i, FixEq { var, .. })| (var.to_owned(), format!("x_{}", i + 1)))
         .collect::<HashMap<String, String>>();
 
-    fix_system
+    let normalized_system = fix_system
         .iter()
         .map(|fix_eq| normalize_equation(fix_eq, &mut var_map))
         .flatten()
-        .collect::<Vec<_>>()
+        .collect::<Vec<_>>();
+
+    (normalized_system, var_map)
 }
 
 fn normalize_equation(
@@ -267,6 +271,7 @@ mod tests {
             },
         ];
 
-        assert_eq!(normalizer::normalize_system(&system), normalized_system)
+        let (fun_normalized_system, _) = normalizer::normalize_system(&system);
+        assert_eq!(fun_normalized_system, normalized_system)
     }
 }

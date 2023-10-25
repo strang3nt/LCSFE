@@ -36,33 +36,70 @@ impl SpecOutput for ParityGameSpec {
 
         let start = std::time::Instant::now();
         let fix_system = pg_to_pbe::pg_to_pbe(&self.pg, pg::Player::Eve);
-        let fix_system = if flags.normalize {
-            normalize_system(&fix_system)
+        let normalized_system = if flags.normalize {
+            Some(normalize_system(&fix_system))
         } else {
-            fix_system
+            None
         };
-        let composed_system =
-            compose_moves::compose_moves(&fix_system, &vec![], &basis);
+        let composed_system = compose_moves::compose_moves(
+            if flags.normalize {
+                &normalized_system.as_ref().unwrap().0
+            } else {
+                &fix_system
+            },
+            &vec![],
+            &basis,
+        );
         let preproc_duration = start.elapsed();
 
         let algo = LocalAlgorithm {
-            fix_system: &fix_system,
+            fix_system: normalized_system
+                .as_ref()
+                .map_or(&fix_system, |x| &x.0),
             symbolic_moves: &composed_system,
             basis: &basis,
         };
-        let node = self
+
+        let position = self
             .pg
             .0
             .iter()
             .enumerate()
             .find(|(_, x)| x.0.name == self.node)
-            .map(|(i, _)| i + 1);
+            .map(|(i, _)| i)
+            .expect(&format!("Cannot find variable with name {}", self.node));
+
+        let var_name = fix_system
+            .iter()
+            .enumerate()
+            .find(|(i, _)| i == &position)
+            .map(|(_, x)| &x.var)
+            .unwrap();
+
+        let index = normalized_system
+            .as_ref()
+            .map_or(&fix_system, |(x, _)| x)
+            .iter()
+            .enumerate()
+            .find(|(_, fix_eq)| {
+                if flags.normalize {
+                    normalized_system.as_ref().unwrap().1.get(var_name).expect(
+                        &format!("Cannot find variable with name {}", var_name),
+                    ) == &fix_eq.var
+                } else {
+                    var_name == &fix_eq.var
+                }
+            })
+            .map(|(i, _)| i + 1)
+            .expect(&format!("Cannot find variable with name {}", var_name));
 
         let start = std::time::Instant::now();
         let winner = algo.local_check(Position::Eve(EvePos {
             b: "true".to_string(),
-            i: node.unwrap(),
+            i: index,
         }));
+
+        println!("Verification starts from variable {:#?}", var_name);
         let algo_duration = start.elapsed();
 
         let winner = match winner {
@@ -71,6 +108,10 @@ impl SpecOutput for ParityGameSpec {
         };
 
         Ok(sem_lmc_common::VerificationOutput {
+            fix_system: fix_system.clone(),
+            fix_system_normalized: normalized_system.map(|x| x.0),
+            moves_composed: composed_system,
+            moves: vec![],
             preproc_time: preproc_duration,
             algorithm_time: algo_duration,
             result: format!("Player {} wins from vertex {}", winner, self.node),

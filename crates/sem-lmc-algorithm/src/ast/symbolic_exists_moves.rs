@@ -52,3 +52,13 @@ impl std::fmt::Display for SymbolicExistsMoveComposed {
         )
     }
 }
+
+impl std::fmt::Display for SymbolicExistsMove {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "phi({})({}) = {}",
+            self.basis_elem, self.func_name, self.formula
+        )
+    }
+}

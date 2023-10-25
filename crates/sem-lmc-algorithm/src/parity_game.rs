@@ -28,21 +28,6 @@ pub struct LocalAlgorithm<'a> {
 
 impl<'a> LocalAlgorithm<'a> {
     pub fn local_check(&self, c: Position) -> Player {
-        println!(
-            "The parameters are:\n\n{}\n\n{}\n\n{:?}\n",
-            self.fix_system
-                .iter()
-                .map(|x| format!("{};", x))
-                .collect::<Vec<String>>()
-                .join("\n"),
-            self.symbolic_moves
-                .iter()
-                .map(|x| format!("{};", x))
-                .collect::<Vec<String>>()
-                .join("\n"),
-            self.basis
-        );
-
         let m: usize = self.fix_system.len();
 
         self.explore(
@@ -111,6 +96,8 @@ impl<'a> LocalAlgorithm<'a> {
             };
 
             let cp = pi.iter().next().unwrap().clone();
+            println!("{:?}", cp);
+
             pi.remove(&cp);
             pl.push((play_data, pi));
             self.explore(cp, pl, assumptions, decisions)
@@ -135,7 +122,7 @@ impl<'a> LocalAlgorithm<'a> {
                 pl.push((play_data, pi));
                 self.explore(play_data_p, pl, assumptions, decisions)
             } else {
-                if Position::get_controller(&cp) == *p {
+                if &Position::get_controller(&cp) == p {
                     decisions.get_mut_p(p).insert(
                         play_data.clone(),
                         (
@@ -239,7 +226,6 @@ impl<'a> LocalAlgorithm<'a> {
         }
     }
 
-    /// Moves are supposed to be normalized
     fn existential_move(&self, f: &LogicFormula) -> Option<HashSet<AdamPos>> {
         let mut c: HashSet<AdamPos> = HashSet::new();
 
