@@ -130,7 +130,7 @@ fn compose_move_base(
 }
 
 /// suppose output is sanitized, meaning, for each definition of operator
-/// in the symbolic existential moves, there is the corresponding operator
+/// in the symbolic exists-moves, there is the corresponding operator
 /// in the system of fixpoint equation, whose arguments are at least the
 /// same as the different occurences of atoms of type [b, j] in the formula.
 fn subst(

@@ -35,7 +35,7 @@ enum Commands {
         fix_system: std::path::PathBuf,
         /// A path to a file containing the basis
         basis: std::path::PathBuf,
-        /// A path to a file containing the symbolic existential moves, for each
+        /// A path to a file containing the symbolic exists-moves, for each
         /// basis element and function, to be composed
         moves_system: std::path::PathBuf,
         /// A string representing the element of the basis whose membership in

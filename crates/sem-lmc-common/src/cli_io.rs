@@ -37,7 +37,7 @@ impl VerificationOutput {
             ),
         };
         let moves = format!(
-            "Symbolic existential-moves: \n\n{}\n\n",
+            "Symbolic exists-moves: \n\n{}\n\n",
             self.moves
                 .iter()
                 .map(|x| format!("{}", x))
@@ -45,7 +45,7 @@ impl VerificationOutput {
                 .join(";\n")
         );
         let composed_moves = format!(
-            "Symbolic existential-moves composed: \n\n{}\n\n",
+            "Symbolic exists-moves composed: \n\n{}\n\n",
             self.moves_composed
                 .iter()
                 .map(|x| format!("{}", x))

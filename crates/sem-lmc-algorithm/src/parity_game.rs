@@ -84,7 +84,7 @@ impl<'a> LocalAlgorithm<'a> {
 
                 Position::Eve(b_i) => {
                     let formula = Self::get_formula(self.symbolic_moves, b_i);
-                    self.existential_move(formula)
+                    self.exists_move(formula)
                         .unwrap()
                         .into_iter()
                         .map(|x| PlayData {
@@ -148,7 +148,7 @@ impl<'a> LocalAlgorithm<'a> {
                                         b_i,
                                     );
                                     Justification::SetOfMoves(
-                                        self.existential_move(formula)
+                                        self.exists_move(formula)
                                             .unwrap_or_default()
                                             .into_iter()
                                             .map(|x| Position::Adam(x))
@@ -222,7 +222,7 @@ impl<'a> LocalAlgorithm<'a> {
         }
     }
 
-    fn existential_move(&self, f: &LogicFormula) -> Option<HashSet<AdamPos>> {
+    fn exists_move(&self, f: &LogicFormula) -> Option<HashSet<AdamPos>> {
         let mut c: HashSet<AdamPos> = HashSet::new();
 
         match f {
@@ -238,7 +238,7 @@ impl<'a> LocalAlgorithm<'a> {
             LogicFormula::Conj(fs) => Some(
                 fs.iter()
                     .map(|phi_k| {
-                        self.existential_move(phi_k)
+                        self.exists_move(phi_k)
                             .unwrap_or_default()
                             .into_iter()
                             .collect::<Vec<_>>()
@@ -265,7 +265,7 @@ impl<'a> LocalAlgorithm<'a> {
             LogicFormula::Disj(fs) => Some(
                 fs.iter()
                     .map(|phi_k| {
-                        self.existential_move(phi_k).unwrap_or_default()
+                        self.exists_move(phi_k).unwrap_or_default()
                     })
                     .flatten()
                     .collect::<HashSet<_>>(),
