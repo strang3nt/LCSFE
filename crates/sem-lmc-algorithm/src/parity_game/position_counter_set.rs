@@ -3,6 +3,7 @@ use super::player::Player;
 use super::position::Position;
 use std::collections::{HashMap, HashSet};
 
+#[derive(Debug)]
 pub struct PositionCounterSet<T> {
     eve: HashMap<PlayData, T>,
     adam: HashMap<PlayData, T>,
@@ -28,6 +29,7 @@ impl<T> PositionCounterSet<T> {
     }
 }
 
+#[derive(Debug)]
 pub enum Justification {
     Truth,
     SetOfMoves(HashSet<Position>),

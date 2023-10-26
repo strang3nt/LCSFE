@@ -91,7 +91,7 @@ fn main() {
             let var_name = fix_system
                 .iter()
                 .enumerate()
-                .find(|(i, _)| i == &position)
+                .find(|(i, _)| *i == position - 1)
                 .map(|(_, x)| &x.var)
                 .unwrap();
 

@@ -29,9 +29,8 @@ pub struct LocalAlgorithm<'a> {
 impl<'a> LocalAlgorithm<'a> {
     pub fn local_check(&self, c: Position) -> Player {
         let m: usize = self.fix_system.len();
-
         self.explore(
-            PlayData { pos: c, k: vec![0; m + 1] },
+            PlayData { pos: c, k: vec![0; m] },
             &mut vec![],
             &mut PositionCounterSet::new(),
             &mut PositionCounterSet::new(),
@@ -49,7 +48,7 @@ impl<'a> LocalAlgorithm<'a> {
         let k = &play_data.k;
 
         if self.is_empty(c) {
-            let opponent = Player::get_opponent(&Position::get_controller(&c));
+            let opponent = Player::get_opponent(&Position::get_controller(c));
             decisions.get_mut_p(&opponent).insert(
                 play_data.clone(),
                 (Justification::Truth, Instant::now()),
@@ -57,11 +56,12 @@ impl<'a> LocalAlgorithm<'a> {
             self.backtrack(&opponent, c, pl, assumptions, decisions)
         } else if let Some(p) = self.contains(&decisions, &play_data) {
             self.backtrack(&p, c, pl, assumptions, decisions)
-        } else if let Some((PlayData { pos: _, k: kp }, _)) =
-            pl.iter().find(|(PlayData { pos: cp, k: _ }, _)| cp == c)
+        } else if let Some((PlayData { k: kp, .. }, _)) =
+            pl.iter().find(|(PlayData { pos: cp, .. }, _)| cp == c)
         {
-            let p = match self.le(kp, k, &Player::Eve) {
+            let p = match self.counter_le_p(kp, k, &Player::Eve) {
                 true => Player::Eve,
+                // It is guaranteed that either kp < k for Eve or kp < k for Adam
                 false => Player::Adam,
             };
             assumptions.get_mut_p(&p).insert(
@@ -70,7 +70,7 @@ impl<'a> LocalAlgorithm<'a> {
             );
             self.backtrack(&p, &c, pl, assumptions, decisions)
         } else {
-            let kp = Self::next(k, Position::priority(c));
+            let kp = Self::counter_next(k, Position::priority(c));
 
             let mut pi = match c {
                 Position::Adam(pos) => self
@@ -95,12 +95,17 @@ impl<'a> LocalAlgorithm<'a> {
                 }
             };
 
-            let cp = pi.iter().next().unwrap().clone();
-            println!("{:?}", cp);
+            let ref pp @ PlayData { ref pos, .. } =
+                pi.iter().next().unwrap().clone();
 
-            pi.remove(&cp);
+            pi.remove(&pp);
             pl.push((play_data, pi));
-            self.explore(cp, pl, assumptions, decisions)
+            self.explore(
+                PlayData { pos: pos.clone(), k: kp },
+                pl,
+                assumptions,
+                decisions,
+            )
         }
     }
 
@@ -133,39 +138,33 @@ impl<'a> LocalAlgorithm<'a> {
                         ),
                     );
                 } else {
-                    match &cp {
-                        Position::Eve(b_i) => {
-                            let formula =
-                                Self::get_formula(self.symbolic_moves, b_i);
-                            decisions.get_mut_p(&Player::Eve).insert(
-                                PlayData { pos: cp.clone(), k: kp.clone() },
-                                (
+                    decisions.get_mut_p(p).insert(
+                        PlayData { pos: cp.clone(), k: kp.clone() },
+                        (
+                            match &cp {
+                                Position::Eve(b_i) => {
+                                    let formula = Self::get_formula(
+                                        self.symbolic_moves,
+                                        b_i,
+                                    );
                                     Justification::SetOfMoves(
                                         self.existential_move(formula)
                                             .unwrap_or_default()
                                             .into_iter()
                                             .map(|x| Position::Adam(x))
                                             .collect(),
-                                    ),
-                                    Instant::now(),
+                                    )
+                                }
+                                Position::Adam(x) => Justification::SetOfMoves(
+                                    self.universal_move(x)
+                                        .into_iter()
+                                        .map(|b_i| Position::Eve(b_i))
+                                        .collect(),
                                 ),
-                            );
-                        }
-                        Position::Adam(x) => {
-                            decisions.get_mut_p(&Player::Adam).insert(
-                                PlayData { pos: cp.clone(), k: kp.clone() },
-                                (
-                                    Justification::SetOfMoves(
-                                        self.universal_move(x)
-                                            .into_iter()
-                                            .map(|b_i| Position::Eve(b_i))
-                                            .collect(),
-                                    ),
-                                    Instant::now(),
-                                ),
-                            );
-                        }
-                    }
+                            },
+                            Instant::now(),
+                        ),
+                    );
                 }
                 assumptions.get_mut_p(p).remove(&play_data);
                 let opponent = Player::get_opponent(p);
@@ -187,12 +186,9 @@ impl<'a> LocalAlgorithm<'a> {
         assumptions: &PositionCounterSet<Instant>,
         decisions: &mut PositionCounterSet<(Justification, Instant)>,
     ) {
-        if let Some(after_not_valid) = &mut assumptions.get_p(p).get(c).cloned()
-        {
-            decisions
-                .get_mut_p(p)
-                .retain(|_, (_, inst)| inst < after_not_valid);
-        }
+        let after_not_valid =
+            &mut assumptions.get_p(p).get(c).cloned().unwrap();
+        decisions.get_mut_p(p).retain(|_, (_, inst)| inst < after_not_valid);
     }
 
     pub fn get_formula(
@@ -240,9 +236,9 @@ impl<'a> LocalAlgorithm<'a> {
                 Some(c)
             }
             LogicFormula::Conj(fs) => Some(
-                fs.into_iter()
-                    .map(|i| {
-                        self.existential_move(i)
+                fs.iter()
+                    .map(|phi_k| {
+                        self.existential_move(phi_k)
                             .unwrap_or_default()
                             .into_iter()
                             .collect::<Vec<_>>()
@@ -253,10 +249,10 @@ impl<'a> LocalAlgorithm<'a> {
                             vec![BTreeSet::new(); self.fix_system.len()],
                             |acc, AdamPos { x: elem }| {
                                 acc.into_iter()
-                                    .enumerate()
-                                    .map(|(i, e): (usize, BTreeSet<String>)| {
-                                        e.union(&elem[i])
-                                            .map(|x| x.clone())
+                                    .zip(elem)
+                                    .map(|(e, ep): (BTreeSet<_>, BTreeSet<_>)| {
+                                        e.union(&ep)
+                                            .cloned()
                                             .collect::<BTreeSet<String>>()
                                     })
                                     .collect::<Vec<_>>()
@@ -265,15 +261,15 @@ impl<'a> LocalAlgorithm<'a> {
                     })
                     .map(|x| AdamPos { x })
                     .collect::<HashSet<_>>(),
-            ), // unwrap or else none,
-            LogicFormula::Disj(fs) => {
-                Some(
-                    fs.iter()
-                        .map(|i| self.existential_move(i).unwrap_or_default()) // unwrap or else empty set
-                        .flatten()
-                        .collect::<HashSet<_>>(),
-                )
-            }
+            ),
+            LogicFormula::Disj(fs) => Some(
+                fs.iter()
+                    .map(|phi_k| {
+                        self.existential_move(phi_k).unwrap_or_default()
+                    })
+                    .flatten()
+                    .collect::<HashSet<_>>(),
+            ),
         }
     }
 
@@ -292,19 +288,17 @@ impl<'a> LocalAlgorithm<'a> {
     pub fn contains(
         &self,
         decisions: &PositionCounterSet<(Justification, Instant)>,
-        play_data: &PlayData,
+        PlayData { pos: c, k }: &PlayData,
     ) -> Option<Player> {
-        let PlayData { pos: c, k } = play_data;
-
         if decisions.get_p(&Player::Eve).iter().any(
             |(PlayData { pos: cp, k: kp }, _)| {
-                self.leq(kp, k, &Player::Eve) && cp == c
+                self.counter_leq_p(kp, k, &Player::Eve) && cp == c
             },
         ) {
             Some(Player::Eve)
         } else if decisions.get_p(&Player::Adam).iter().any(
             |(PlayData { pos: cp, k: kp }, _)| {
-                self.leq(kp, k, &Player::Adam) && cp == c
+                self.counter_leq_p(kp, k, &Player::Adam) && cp == c
             },
         ) {
             Some(Player::Adam)
@@ -313,27 +307,22 @@ impl<'a> LocalAlgorithm<'a> {
         }
     }
 
-    pub fn le(&self, k: &[u32], kp: &[u32], p: &Player) -> bool {
-        let mut n = 0;
-        let m = k.len();
-        for i in 1..m {
-            if k[i] != kp[i] {
-                n = i;
-            };
-        }
-
-        if n == 0 {
-            false
-        } else {
-            let result_for_eve = match self.fix_system[n - 1].fix_ty {
-                FixType::Max => k[n] < kp[n],
-                FixType::Min => k[n] > kp[n],
-            };
-
-            match p {
-                Player::Adam => !result_for_eve,
-                Player::Eve => result_for_eve,
+    fn counter_le_eve(&self, k: &Counter, kp: &Counter) -> bool {
+        let n = k.iter().zip(kp).enumerate().rev().find(|(_, (n, np))| n != np);
+        if let Some((i, _)) = n {
+            match self.fix_system[i].fix_ty {
+                FixType::Max => k[i] < kp[i],
+                FixType::Min => k[i] > kp[i],
             }
+        } else {
+            false
+        }
+    }
+
+    fn counter_le_p(&self, k: &Counter, kp: &Counter, p: &Player) -> bool {
+        match p {
+            Player::Eve => self.counter_le_eve(k, kp),
+            Player::Adam => self.counter_le_eve(kp, k),
         }
     }
 
@@ -348,8 +337,8 @@ impl<'a> LocalAlgorithm<'a> {
     ///    $k' < k$ for the existential player,
     ///  - `k <= k'` for a player whenever `k < k'` or $k = k'$, for a player.
     ///
-    pub fn leq(&self, k: &[u32], kp: &[u32], p: &Player) -> bool {
-        k == kp || self.le(k, kp, p)
+    pub fn counter_leq_p(&self, k: &Counter, kp: &Counter, p: &Player) -> bool {
+        k == kp || self.counter_le_p(k, kp, p)
     }
 
     /// Updates the counter, such that each non-zero priority (argument `i`) is associated
@@ -359,11 +348,12 @@ impl<'a> LocalAlgorithm<'a> {
     ///  - `next(k, 0) = k`
     ///  - `next(k, i) = k'`.
     ///
-    fn next(k: &Counter, i: usize) -> Counter {
-        let mut kp = vec![0; k.len()];
+    fn counter_next(k: &Counter, i: usize) -> Counter {
         if i == 0 {
             k.clone()
         } else {
+            let i = i - 1;
+            let mut kp = vec![0; k.len()];
             kp[i] = k[i] + 1;
             for j in i + 1..kp.len() {
                 kp[j] = k[j]
