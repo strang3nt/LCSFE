@@ -1,6 +1,6 @@
 use std::{fmt::Display, time::Duration};
 
-use sem_lmc_algorithm::ast::{
+use sem_sfe_algorithm::ast::{
     fixpoint_system::FixEq,
     symbolic_exists_moves::{SymbolicExistsMove, SymbolicExistsMoveComposed},
 };

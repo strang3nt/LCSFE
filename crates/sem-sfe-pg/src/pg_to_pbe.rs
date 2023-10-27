@@ -1,5 +1,5 @@
 use crate::pg::{Player, PG};
-use sem_lmc_algorithm::ast::fixpoint_system::{ExpFixEq, FixEq, FixType};
+use sem_sfe_algorithm::ast::fixpoint_system::{ExpFixEq, FixEq, FixType};
 
 pub fn pg_to_pbe(pg: &PG, p: Player) -> Vec<FixEq> {
     pg.0.iter().fold(vec![], |mut acc, (n, adj_list)| {

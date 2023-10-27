@@ -3,12 +3,12 @@ mod pg;
 mod pg_to_pbe;
 
 use pg::PG;
-use sem_lmc_algorithm::{
+use sem_sfe_algorithm::{
     algorithm::{EvePos, LocalAlgorithm, Player, Position},
     moves_compositor::compose_moves,
     normalizer::normalize_system,
 };
-use sem_lmc_common::{InputFlags, SpecOutput, VerificationOutput};
+use sem_sfe_common::{InputFlags, SpecOutput, VerificationOutput};
 
 pub struct ParityGameSpec {
     pg: PG,
@@ -107,7 +107,7 @@ impl SpecOutput for ParityGameSpec {
             Player::Eve => 0,
         };
 
-        Ok(sem_lmc_common::VerificationOutput {
+        Ok(sem_sfe_common::VerificationOutput {
             fix_system: fix_system.clone(),
             fix_system_normalized: normalized_system.map(|x| x.0),
             moves_composed: composed_system,

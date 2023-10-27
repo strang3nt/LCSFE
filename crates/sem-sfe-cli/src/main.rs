@@ -1,12 +1,12 @@
 use std::{io::BufReader, time::Instant};
 
 use clap::{Parser, Subcommand};
-use sem_lmc_algorithm::{
+use sem_sfe_algorithm::{
     algorithm::{EvePos, Position},
     normalizer::normalize_system,
 };
-use sem_lmc_common::{InputFlags, SpecOutput, VerificationOutput};
-use sem_lmc_pg::ParityGameSpec;
+use sem_sfe_common::{InputFlags, SpecOutput, VerificationOutput};
+use sem_sfe_pg::ParityGameSpec;
 
 #[derive(Debug, Parser)]
 #[command(about = "A local model checker which leverages parity games and symbolic exists-moves", long_about = None)]
@@ -80,9 +80,9 @@ fn main() {
             let moves_src = std::fs::read_to_string(moves_system);
 
             let arity =
-                sem_lmc_algorithm::parse::parse_fun_arity(arity_src.unwrap())
+                sem_sfe_algorithm::parse::parse_fun_arity(arity_src.unwrap())
                     .unwrap();
-            let fix_system = sem_lmc_algorithm::parse::parse_fixpoint_system(
+            let fix_system = sem_sfe_algorithm::parse::parse_fixpoint_system(
                 arity.clone(),
                 fix_system_src.unwrap(),
             )
@@ -96,9 +96,9 @@ fn main() {
                 .unwrap();
 
             let basis =
-                sem_lmc_algorithm::parse::parse_basis(basis_src.unwrap())
+                sem_sfe_algorithm::parse::parse_basis(basis_src.unwrap())
                     .unwrap();
-            let moves_system = sem_lmc_algorithm::parse::parse_symbolic_system(
+            let moves_system = sem_sfe_algorithm::parse::parse_symbolic_system(
                 arity,
                 basis.clone(),
                 moves_src.unwrap(),
@@ -112,10 +112,10 @@ fn main() {
             } else {
                 None
             };
-            let composed_system = sem_lmc_algorithm::moves_compositor::compose_moves::compose_moves(if normalize { &normalized_system.as_ref().unwrap().0} else {&fix_system}, &moves_system, &basis);
+            let composed_system = sem_sfe_algorithm::moves_compositor::compose_moves::compose_moves(if normalize { &normalized_system.as_ref().unwrap().0} else {&fix_system}, &moves_system, &basis);
             let preproc = start.elapsed();
 
-            let parity_game = sem_lmc_algorithm::algorithm::LocalAlgorithm {
+            let parity_game = sem_sfe_algorithm::algorithm::LocalAlgorithm {
                 symbolic_moves: &composed_system,
                 fix_system: &fix_system,
                 basis: &basis,
