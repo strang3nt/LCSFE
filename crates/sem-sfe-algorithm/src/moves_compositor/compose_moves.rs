@@ -55,7 +55,7 @@ fn compose_move_eq(
         .map(|b| SymbolicExistsMove {
             formula: compose_move_base(system, b, &system[i].exp, s),
             func_name: (i + 1).to_string(),
-            basis_elem: b.clone(),
+            basis_elem: b.to_owned(),
         })
         .collect::<Vec<_>>()
 }

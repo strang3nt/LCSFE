@@ -18,7 +18,7 @@ use player::Player;
 use position::{AdamPos, EvePos, Position};
 use position_counter_set::{Justification, PositionCounterSet};
 
-type Playlist =
+type Playlist<'a> =
     Vec<(PlayData, (Box<dyn Iterator<Item = Position>>, Rc<Counter>))>;
 type Counter = Vec<u32>;
 
@@ -33,93 +33,148 @@ impl<'a> LocalAlgorithm<'a> {
         let m: usize = self.fix_system.len();
         self.explore(
             PlayData { pos: c, k: Rc::new(vec![0; m]) },
-            vec![],
-            PositionCounterSet::new(),
-            PositionCounterSet::new(),
+            &mut vec![],
+            &mut PositionCounterSet::new(),
+            &mut PositionCounterSet::new(),
         )
     }
 
     fn explore(
         &self,
         play_data: PlayData,
-        mut pl: Playlist,
-        mut assumptions: PositionCounterSet<Instant>,
-        mut decisions: PositionCounterSet<(Justification, Instant)>,
+        pl: &mut Playlist,
+        assumptions: &mut PositionCounterSet<Instant>,
+        decisions: &mut PositionCounterSet<(Justification, Instant)>,
     ) -> Player {
-        let mut iter = match play_data.pos.clone() {
-            Position::Eve(x) => Self::exists_move(
-                self.get_formula(&x).clone(),
-                self.fix_system.len(),
-            )
-            .peekable(),
-            Position::Adam(x) => Self::universal_move(x).peekable(),
+        let mut p = Player::Eve;
+
+        let kp = Rc::new(Self::counter_next(
+            &play_data.k,
+            Position::priority(&play_data.pos),
+        ));
+
+        let mut pi = match play_data.pos.clone() {
+            Position::Adam(pos) => (Self::universal_move(pos), kp.clone()),
+            Position::Eve(b_i) => (
+                Self::exists_move(
+                    self.get_formula(&b_i).clone(),
+                    self.fix_system.len(),
+                ),
+                kp.clone(),
+            ),
         };
 
-        if let None = iter.peek() {
-            let opponent =
-                Player::get_opponent(&Position::get_controller(&play_data.pos));
-            decisions.get_mut_p(&opponent).insert(
-                play_data.clone(),
-                (Justification::Truth, Instant::now()),
-            );
-            self.backtrack(opponent, play_data.pos, pl, assumptions, decisions)
-        } else if let Some(p) = self.contains(&decisions, &play_data) {
-            self.backtrack(p, play_data.pos, pl, assumptions, decisions)
-        } else if let Some((PlayData { k: kp, .. }, _)) =
-            pl.iter().find(|(PlayData { pos: cp, .. }, _)| cp == &play_data.pos)
-        {
-            let p = match self.counter_le_p(kp, &play_data.k, &Player::Eve) {
-                true => Player::Eve,
-                // It is guaranteed that either kp < k for Eve or kp < k for Adam
-                false => Player::Adam,
-            };
-            assumptions.get_mut_p(&p).insert(
-                PlayData { pos: play_data.pos.clone(), k: kp.clone() },
-                Instant::now(),
-            );
-            self.backtrack(p, play_data.pos, pl, assumptions, decisions)
-        } else {
-            let kp = Rc::new(Self::counter_next(
-                &play_data.k,
-                Position::priority(&play_data.pos),
-            ));
+        let mut curr_play =
+            PlayData { pos: pi.0.next().unwrap().clone(), k: kp.clone() };
+        pl.push((play_data, pi));
 
-            let mut pi = match play_data.pos.clone() {
-                Position::Adam(pos) => (Self::universal_move(pos), kp.clone()),
-                Position::Eve(b_i) => (
-                    Self::exists_move(
-                        self.get_formula(&b_i).clone(),
-                        self.fix_system.len(),
+        while !pl.is_empty() {
+            let mut iter = match &curr_play.pos {
+                Position::Eve(x) => Self::exists_move(
+                    self.get_formula(&x).clone(),
+                    self.fix_system.len(),
+                )
+                .peekable(),
+                Position::Adam(x) => Self::universal_move(x.clone()).peekable(),
+            };
+
+            if let None = iter.peek() {
+                let opponent = Player::get_opponent(&Position::get_controller(
+                    &curr_play.pos,
+                ));
+                decisions.get_mut_p(&opponent).insert(
+                    curr_play.clone(),
+                    (Justification::Truth, Instant::now()),
+                );
+                p = self.backtrack(
+                    opponent,
+                    &curr_play.pos,
+                    pl,
+                    assumptions,
+                    decisions,
+                )
+            } else if let Some(other_player) =
+                self.contains(&decisions, &curr_play)
+            {
+                p = self.backtrack(
+                    other_player,
+                    &curr_play.pos,
+                    pl,
+                    assumptions,
+                    decisions,
+                );
+            } else if let Some((PlayData { k: kp, .. }, _)) = pl
+                .iter()
+                .find(|(PlayData { pos: cp, .. }, _)| cp == &curr_play.pos)
+            {
+                let other_player =
+                    match self.counter_le_p(kp, &curr_play.k, &Player::Eve) {
+                        true => Player::Eve,
+                        // It is guaranteed that either kp < k for Eve or kp < k for Adam
+                        false => Player::Adam,
+                    };
+                assumptions.get_mut_p(&other_player).insert(
+                    PlayData { pos: curr_play.pos.clone(), k: kp.clone() },
+                    Instant::now(),
+                );
+                p = self.backtrack(
+                    other_player,
+                    &curr_play.pos,
+                    pl,
+                    assumptions,
+                    decisions,
+                )
+            } else {
+                let kp = Rc::new(Self::counter_next(
+                    &curr_play.k,
+                    Position::priority(&curr_play.pos),
+                ));
+
+                let mut pi = match curr_play.pos.clone() {
+                    Position::Adam(pos) => {
+                        (Self::universal_move(pos), kp.clone())
+                    }
+                    Position::Eve(b_i) => (
+                        Self::exists_move(
+                            self.get_formula(&b_i).clone(),
+                            self.fix_system.len(),
+                        ),
+                        kp.clone(),
                     ),
-                    kp.clone(),
-                ),
-            };
-            let pp =
-                PlayData { pos: pi.0.next().unwrap().clone(), k: kp.clone() };
-            pl.push((play_data, pi));
+                };
+                let new_pos = pi.0.next();
+                pl.push((curr_play, pi));
+                curr_play =
+                    PlayData { pos: new_pos.unwrap().clone(), k: kp.clone() };
 
-            self.explore(pp, pl, assumptions, decisions)
+                // self.explore(pp, pl, assumptions, decisions)
+            }
         }
+        p
     }
 
     fn backtrack(
         &self,
         p: Player,
-        c: Position,
-        mut pl: Playlist,
-        mut assumptions: PositionCounterSet<Instant>,
-        mut decisions: PositionCounterSet<(Justification, Instant)>,
+        c: &Position,
+        pl: &mut Playlist,
+        assumptions: &mut PositionCounterSet<Instant>,
+        decisions: &mut PositionCounterSet<(Justification, Instant)>,
     ) -> Player {
-        if let Some((play_data, mut pi)) = pl.pop() {
-            let cp = &play_data.pos;
-            let kp = &play_data.k;
+        let mut p = p;
+        let mut cp: &Position;
+        let mut kp: &Rc<Counter>;
+
+        while let Some((play_data, mut pi)) = pl.pop() {
+            cp = &play_data.pos;
+            kp = &play_data.k;
 
             if let (Some(pos), true) =
                 (pi.0.next(), Position::get_controller(&cp) != p)
             {
                 let pp = PlayData { pos, k: pi.1.clone() };
                 pl.push((play_data, pi));
-                self.explore(pp, pl, assumptions, decisions)
+                p = self.explore(pp, pl, assumptions, decisions)
             } else {
                 if Position::get_controller(&cp) == p {
                     decisions.get_mut_p(&p).insert(
@@ -160,20 +215,13 @@ impl<'a> LocalAlgorithm<'a> {
                 assumptions.get_mut_p(&p).remove(&play_data);
                 let opponent = Player::get_opponent(&p);
                 if let Some(_) = assumptions.get_p(&opponent).get(&play_data) {
-                    Self::forget(
-                        &opponent,
-                        &play_data,
-                        &mut assumptions,
-                        &mut decisions,
-                    );
+                    Self::forget(&opponent, &play_data, assumptions, decisions);
                     assumptions.get_mut_p(&opponent).remove(&play_data);
                 };
-
-                self.backtrack(p, play_data.pos, pl, assumptions, decisions)
             }
-        } else {
-            p.clone()
         }
+
+        p
     }
 
     #[inline]

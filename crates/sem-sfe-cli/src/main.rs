@@ -3,6 +3,7 @@ use std::{io::BufReader, time::Instant};
 use clap::{Parser, Subcommand};
 use sem_sfe_algorithm::{
     algorithm::{EvePos, Position},
+    compose_moves::compose_moves,
     normalizer::normalize_system,
 };
 use sem_sfe_common::{InputFlags, SpecOutput, VerificationOutput};
@@ -88,13 +89,6 @@ fn main() {
             )
             .unwrap();
 
-            let var_name = fix_system
-                .iter()
-                .enumerate()
-                .find(|(i, _)| *i == position - 1)
-                .map(|(_, x)| &x.var)
-                .unwrap();
-
             let basis =
                 sem_sfe_algorithm::parse::parse_basis(basis_src.unwrap())
                     .unwrap();
@@ -112,45 +106,61 @@ fn main() {
             } else {
                 None
             };
-            let composed_system = sem_sfe_algorithm::moves_compositor::compose_moves::compose_moves(if normalize { &normalized_system.as_ref().unwrap().0} else {&fix_system}, &moves_system, &basis);
+            let composed_system = compose_moves(
+                if normalize {
+                    &normalized_system.as_ref().unwrap().0
+                } else {
+                    &fix_system
+                },
+                &moves_system,
+                &basis,
+            );
+
             let preproc = start.elapsed();
+
+            let var_name = fix_system
+                .iter()
+                .enumerate()
+                .find(|(i, _)| *i == position - 1)
+                .map(|(_, x)| &x.var)
+                .unwrap();
 
             let pos = Position::Eve(EvePos {
                 b: basis_element,
-                i: fix_system
-                    .iter()
-                    .enumerate()
-                    .find(|(_, fix_eq)| {
-                        if normalize {
-                            normalized_system
-                                .as_ref()
-                                .unwrap()
-                                .1
-                                .get(var_name)
-                                .expect(&format!(
-                                    "Cannot find variable with index {}",
-                                    position
-                                ))
-                                == &fix_eq.var
-                        } else {
-                            var_name == &fix_eq.var
-                        }
-                    })
-                    .map(|(i, _)| i + 1)
-                    .expect(&format!(
-                        "Cannot find variable with index {}",
-                        position
-                    )),
+                i: if normalize {
+                    normalized_system
+                        .as_ref()
+                        .unwrap()
+                        .0
+                        .iter()
+                        .enumerate()
+                        .find(|(_, eq)| {
+                            &eq.var
+                                == normalized_system
+                                    .as_ref()
+                                    .unwrap()
+                                    .1
+                                    .get(var_name)
+                                    .unwrap()
+                        })
+                        .map(|(i, _)| i + 1)
+                        .unwrap()
+                } else {
+                    position
+                },
             });
 
             let parity_game = sem_sfe_algorithm::algorithm::LocalAlgorithm {
                 symbolic_moves: &composed_system,
-                fix_system: &fix_system,
+                fix_system: normalized_system
+                    .as_ref()
+                    .map(|x| &x.0)
+                    .unwrap_or(&fix_system),
                 basis: &basis,
             };
 
             let start = Instant::now();
-            let result = parity_game.local_check(pos);
+            let result = parity_game.local_check(pos.clone());
             let algo_time = start.elapsed();
 
             let result = VerificationOutput {
@@ -163,7 +173,8 @@ fn main() {
                 result: format!("The winner is the {}", result),
             };
             println!(
-                "{}",
+                "\nVerification starts from position {}\n\n{}",
+                pos,
                 if explain {
                     result.format_verbose()
                 } else {
