@@ -5,6 +5,7 @@ mod position_counter_set;
 
 use std::collections::BTreeSet;
 use std::collections::HashSet;
+use std::rc::Rc;
 use std::time::Instant;
 
 use crate::ast::fixpoint_system::{FixEq, FixType};
@@ -17,7 +18,8 @@ use player::Player;
 use position::{AdamPos, EvePos, Position};
 use position_counter_set::{Justification, PositionCounterSet};
 
-type Playlist = Vec<(PlayData, HashSet<PlayData>)>;
+type Playlist =
+    Vec<(PlayData, (Box<dyn Iterator<Item = Position>>, Rc<Counter>))>;
 type Counter = Vec<u32>;
 
 pub struct LocalAlgorithm<'a> {
@@ -30,105 +32,97 @@ impl<'a> LocalAlgorithm<'a> {
     pub fn local_check(&self, c: Position) -> Player {
         let m: usize = self.fix_system.len();
         self.explore(
-            PlayData { pos: c, k: vec![0; m] },
-            &mut vec![],
-            &mut PositionCounterSet::new(),
-            &mut PositionCounterSet::new(),
+            PlayData { pos: c, k: Rc::new(vec![0; m]) },
+            vec![],
+            PositionCounterSet::new(),
+            PositionCounterSet::new(),
         )
     }
 
     fn explore(
         &self,
         play_data: PlayData,
-        pl: &mut Playlist,
-        assumptions: &mut PositionCounterSet<Instant>,
-        decisions: &mut PositionCounterSet<(Justification, Instant)>,
+        mut pl: Playlist,
+        mut assumptions: PositionCounterSet<Instant>,
+        mut decisions: PositionCounterSet<(Justification, Instant)>,
     ) -> Player {
-        let c = &play_data.pos;
-        let k = &play_data.k;
+        let mut iter = match play_data.pos.clone() {
+            Position::Eve(x) => Self::exists_move(
+                self.get_formula(&x).clone(),
+                self.fix_system.len(),
+            )
+            .peekable(),
+            Position::Adam(x) => Self::universal_move(x).peekable(),
+        };
 
-        if self.is_empty(c) {
-            let opponent = Player::get_opponent(&Position::get_controller(c));
+        if let None = iter.peek() {
+            let opponent =
+                Player::get_opponent(&Position::get_controller(&play_data.pos));
             decisions.get_mut_p(&opponent).insert(
                 play_data.clone(),
                 (Justification::Truth, Instant::now()),
             );
-            self.backtrack(&opponent, c, pl, assumptions, decisions)
+            self.backtrack(opponent, play_data.pos, pl, assumptions, decisions)
         } else if let Some(p) = self.contains(&decisions, &play_data) {
-            self.backtrack(&p, c, pl, assumptions, decisions)
+            self.backtrack(p, play_data.pos, pl, assumptions, decisions)
         } else if let Some((PlayData { k: kp, .. }, _)) =
-            pl.iter().find(|(PlayData { pos: cp, .. }, _)| cp == c)
+            pl.iter().find(|(PlayData { pos: cp, .. }, _)| cp == &play_data.pos)
         {
-            let p = match self.counter_le_p(kp, k, &Player::Eve) {
+            let p = match self.counter_le_p(kp, &play_data.k, &Player::Eve) {
                 true => Player::Eve,
                 // It is guaranteed that either kp < k for Eve or kp < k for Adam
                 false => Player::Adam,
             };
             assumptions.get_mut_p(&p).insert(
-                PlayData { pos: c.clone(), k: kp.clone() },
+                PlayData { pos: play_data.pos.clone(), k: kp.clone() },
                 Instant::now(),
             );
-            self.backtrack(&p, &c, pl, assumptions, decisions)
+            self.backtrack(p, play_data.pos, pl, assumptions, decisions)
         } else {
-            let kp = Self::counter_next(k, Position::priority(c));
+            let kp = Rc::new(Self::counter_next(
+                &play_data.k,
+                Position::priority(&play_data.pos),
+            ));
 
-            let mut pi = match c {
-                Position::Adam(pos) => self
-                    .universal_move(&pos)
-                    .into_iter()
-                    .map(|b_i| PlayData {
-                        pos: Position::Eve(b_i),
-                        k: kp.clone(),
-                    })
-                    .collect::<HashSet<_>>(),
-
-                Position::Eve(b_i) => {
-                    let formula = Self::get_formula(self.symbolic_moves, b_i);
-                    self.exists_move(formula)
-                        .unwrap()
-                        .into_iter()
-                        .map(|x| PlayData {
-                            pos: Position::Adam(x),
-                            k: kp.clone(),
-                        })
-                        .collect::<HashSet<_>>()
-                }
+            let mut pi = match play_data.pos.clone() {
+                Position::Adam(pos) => (Self::universal_move(pos), kp.clone()),
+                Position::Eve(b_i) => (
+                    Self::exists_move(
+                        self.get_formula(&b_i).clone(),
+                        self.fix_system.len(),
+                    ),
+                    kp.clone(),
+                ),
             };
-
-            let ref pp @ PlayData { ref pos, .. } =
-                pi.iter().next().unwrap().clone();
-
-            pi.remove(&pp);
+            let pp =
+                PlayData { pos: pi.0.next().unwrap().clone(), k: kp.clone() };
             pl.push((play_data, pi));
-            self.explore(
-                PlayData { pos: pos.clone(), k: kp },
-                pl,
-                assumptions,
-                decisions,
-            )
+
+            self.explore(pp, pl, assumptions, decisions)
         }
     }
 
     fn backtrack(
         &self,
-        p: &Player,
-        c: &Position,
-        pl: &mut Playlist,
-        assumptions: &mut PositionCounterSet<Instant>,
-        decisions: &mut PositionCounterSet<(Justification, Instant)>,
+        p: Player,
+        c: Position,
+        mut pl: Playlist,
+        mut assumptions: PositionCounterSet<Instant>,
+        mut decisions: PositionCounterSet<(Justification, Instant)>,
     ) -> Player {
         if let Some((play_data, mut pi)) = pl.pop() {
             let cp = &play_data.pos;
             let kp = &play_data.k;
 
-            if &Position::get_controller(&cp) != p && !pi.is_empty() {
-                let play_data_p = pi.iter().next().unwrap().clone();
-                pi.remove(&play_data_p);
+            if let (Some(pos), true) =
+                (pi.0.next(), Position::get_controller(&cp) != p)
+            {
+                let pp = PlayData { pos, k: pi.1.clone() };
                 pl.push((play_data, pi));
-                self.explore(play_data_p, pl, assumptions, decisions)
+                self.explore(pp, pl, assumptions, decisions)
             } else {
-                if &Position::get_controller(&cp) == p {
-                    decisions.get_mut_p(p).insert(
+                if Position::get_controller(&cp) == p {
+                    decisions.get_mut_p(&p).insert(
                         play_data.clone(),
                         (
                             Justification::SetOfMoves(HashSet::from([
@@ -138,48 +132,51 @@ impl<'a> LocalAlgorithm<'a> {
                         ),
                     );
                 } else {
-                    decisions.get_mut_p(p).insert(
+                    decisions.get_mut_p(&p).insert(
                         PlayData { pos: cp.clone(), k: kp.clone() },
                         (
                             match &cp {
-                                Position::Eve(b_i) => {
-                                    let formula = Self::get_formula(
-                                        self.symbolic_moves,
-                                        b_i,
-                                    );
+                                Position::Eve(_) => {
+                                    // let _ = self.get_formula(b_i);
                                     Justification::SetOfMoves(
-                                        self.exists_move(formula)
-                                            .unwrap_or_default()
-                                            .into_iter()
-                                            .map(|x| Position::Adam(x))
-                                            .collect(),
+                                        HashSet::new(), // self.exists_move(formula)
+                                                        //     .unwrap_or_default()
+                                                        //     .into_iter()
+                                                        //     .map(|x| Position::Adam(x))
+                                                        //     .collect(),
                                     )
                                 }
-                                Position::Adam(x) => Justification::SetOfMoves(
-                                    self.universal_move(x)
-                                        .into_iter()
-                                        .map(|b_i| Position::Eve(b_i))
-                                        .collect(),
+                                Position::Adam(_) => Justification::SetOfMoves(
+                                    HashSet::new(), // self.universal_move(x)
+                                                    //     .into_iter()
+                                                    //     .map(|b_i| Position::Eve(b_i))
+                                                    //     .collect(),
                                 ),
                             },
                             Instant::now(),
                         ),
                     );
                 }
-                assumptions.get_mut_p(p).remove(&play_data);
-                let opponent = Player::get_opponent(p);
+                assumptions.get_mut_p(&p).remove(&play_data);
+                let opponent = Player::get_opponent(&p);
                 if let Some(_) = assumptions.get_p(&opponent).get(&play_data) {
-                    Self::forget(&opponent, &play_data, assumptions, decisions);
+                    Self::forget(
+                        &opponent,
+                        &play_data,
+                        &mut assumptions,
+                        &mut decisions,
+                    );
                     assumptions.get_mut_p(&opponent).remove(&play_data);
                 };
 
-                self.backtrack(&p, &cp, pl, assumptions, decisions)
+                self.backtrack(p, play_data.pos, pl, assumptions, decisions)
             }
         } else {
             p.clone()
         }
     }
 
+    #[inline]
     fn forget(
         p: &Player,
         c: &PlayData,
@@ -191,12 +188,10 @@ impl<'a> LocalAlgorithm<'a> {
         decisions.get_mut_p(p).retain(|_, (_, inst)| inst < after_not_valid);
     }
 
-    pub fn get_formula(
-        s: &'a Vec<SymbolicExistsMoveComposed>,
-        c: &EvePos,
-    ) -> &'a LogicFormula {
+    #[inline]
+    pub fn get_formula(&self, c: &EvePos) -> &LogicFormula {
         let EvePos { b, i } = c;
-        if let Some(f) = s.iter().find(
+        if let Some(f) = self.symbolic_moves.iter().find(
             |SymbolicExistsMoveComposed {
                  formula: _,
                  basis_elem: base_elem,
@@ -212,79 +207,65 @@ impl<'a> LocalAlgorithm<'a> {
         }
     }
 
-    fn is_empty(&self, p: &Position) -> bool {
-        match p {
-            Position::Eve(b_i) => {
-                Self::get_formula(self.symbolic_moves, b_i)
-                    == &LogicFormula::False
-            }
-            Position::Adam(x) => HashSet::is_empty(&self.universal_move(x)),
-        }
-    }
-
-    fn exists_move(&self, f: &LogicFormula) -> Option<HashSet<AdamPos>> {
-        let mut c: HashSet<AdamPos> = HashSet::new();
-
+    fn exists_move(
+        f: LogicFormula,
+        m: usize,
+    ) -> Box<dyn Iterator<Item = Position>> {
         match f {
-            LogicFormula::False => None,
-            LogicFormula::True => Some(c),
+            LogicFormula::False => Box::new(std::iter::empty()),
+            LogicFormula::True => Box::new(std::iter::once(Position::Adam(AdamPos { x: vec![] }))),
             LogicFormula::BasisElem(b, i) => {
                 let mut x =
-                    vec![BTreeSet::<String>::new(); self.fix_system.len()];
-                x[*i - 1].insert(b.clone());
-                c.insert(AdamPos { x });
-                Some(c)
+                    vec![BTreeSet::<String>::new(); m];
+                x[i - 1].insert(b.clone());
+                Box::new(std::iter::once(Position::Adam(AdamPos { x })))
             }
-            LogicFormula::Conj(fs) => Some(
-                fs.iter()
+            LogicFormula::Conj(fs) =>
+                Box::new(fs.into_iter()
                     .map(|phi_k| {
-                        self.exists_move(phi_k)
-                            .unwrap_or_default()
-                            .into_iter()
+                        Self::exists_move(phi_k, m)
                             .collect::<Vec<_>>()
                     })
                     .multi_cartesian_product()
-                    .map(|y| {
-                        y.into_iter().fold(
-                            vec![BTreeSet::new(); self.fix_system.len()],
-                            |acc, AdamPos { x: elem }| {
-                                acc.into_iter()
-                                    .zip(elem)
-                                    .map(|(e, ep): (BTreeSet<_>, BTreeSet<_>)| {
-                                        e.union(&ep)
-                                            .cloned()
-                                            .collect::<BTreeSet<String>>()
-                                    })
-                                    .collect::<Vec<_>>()
-                            },
-                        )
-                    })
-                    .map(|x| AdamPos { x })
-                    .collect::<HashSet<_>>(),
-            ),
-            LogicFormula::Disj(fs) => Some(
-                fs.iter()
-                    .map(|phi_k| {
-                        self.exists_move(phi_k).unwrap_or_default()
-                    })
-                    .flatten()
-                    .collect::<HashSet<_>>(),
+                    .map(move |y| {
+                        Position::Adam(AdamPos {
+                        x: y.into_iter().fold(vec![BTreeSet::new(); m], |acc, pos| {
+                            match pos {
+                                Position::Adam(AdamPos { x }) =>
+                                    acc.into_iter()
+                                        .zip(x)
+                                        .map(|(e, ep): (BTreeSet<_>, BTreeSet<_>)| {
+                                            e.union(&ep)
+                                                .cloned()
+                                                .collect::<BTreeSet<String>>()
+                                        })
+                                        .collect::<Vec<_>>(),
+                                Position::Eve(_) => panic!("Position not expected here.")
+                            }})
+                        })
+                    })),
+
+            LogicFormula::Disj(fs) =>
+                Box::new(fs.into_iter()
+                // Symbolic moves are simplified, thus this is ok
+                    .flat_map(move |phi_k| {
+                        Self::exists_move(phi_k, m)
+                    }),
             ),
         }
     }
 
-    fn universal_move(&self, univ_position: &AdamPos) -> HashSet<EvePos> {
-        univ_position.x.iter().enumerate().fold(
-            HashSet::new(),
-            |mut acc, (i, x_i)| {
-                for b in x_i {
-                    acc.insert(EvePos { b: b.clone(), i: i + 1 });
-                }
-                acc
-            },
-        )
+    #[inline]
+    fn universal_move(
+        AdamPos { x }: AdamPos,
+    ) -> Box<dyn Iterator<Item = Position>> {
+        Box::new(x.into_iter().enumerate().flat_map(|(i, x_i)| {
+            x_i.into_iter()
+                .map(move |b| Position::Eve(EvePos { b: b.clone(), i: i + 1 }))
+        }))
     }
 
+    #[inline]
     pub fn contains(
         &self,
         decisions: &PositionCounterSet<(Justification, Instant)>,
@@ -307,6 +288,7 @@ impl<'a> LocalAlgorithm<'a> {
         }
     }
 
+    #[inline]
     fn counter_le_eve(&self, k: &Counter, kp: &Counter) -> bool {
         let n = k.iter().zip(kp).enumerate().rev().find(|(_, (n, np))| n != np);
         if let Some((i, _)) = n {
@@ -319,6 +301,7 @@ impl<'a> LocalAlgorithm<'a> {
         }
     }
 
+    #[inline]
     fn counter_le_p(&self, k: &Counter, kp: &Counter, p: &Player) -> bool {
         match p {
             Player::Eve => self.counter_le_eve(k, kp),
@@ -336,7 +319,7 @@ impl<'a> LocalAlgorithm<'a> {
     ///  - we say `k < k'` for the universal player whenever it is not true that
     ///    $k' < k$ for the existential player,
     ///  - `k <= k'` for a player whenever `k < k'` or $k = k'$, for a player.
-    ///
+    #[inline]
     pub fn counter_leq_p(&self, k: &Counter, kp: &Counter, p: &Player) -> bool {
         k == kp || self.counter_le_p(k, kp, p)
     }
@@ -348,6 +331,7 @@ impl<'a> LocalAlgorithm<'a> {
     ///  - `next(k, 0) = k`
     ///  - `next(k, i) = k'`.
     ///
+    #[inline]
     fn counter_next(k: &Counter, i: usize) -> Counter {
         if i == 0 {
             k.clone()

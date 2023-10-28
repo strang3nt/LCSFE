@@ -37,8 +37,8 @@ pub fn parse_basis(src: String) -> Result<Vec<String>, Vec<ParserError>> {
 }
 
 pub fn parse_symbolic_system(
-    arity: Vec<(String, usize)>,
-    basis: Vec<String>,
+    arity: &Vec<(String, usize)>,
+    basis: &Vec<String>,
     src: String,
 ) -> Result<Vec<SymbolicExistsMove>, ParserError> {
     moves_parser::symbolic_moves_parser(&arity, &basis).parse(src).map_err(
@@ -54,7 +54,7 @@ pub fn parse_symbolic_system(
 }
 
 pub fn parse_fixpoint_system(
-    arity: Vec<(String, usize)>,
+    arity: &Vec<(String, usize)>,
     src: String,
 ) -> Result<Vec<FixEq>, ParserError> {
     eq_system_parser::eq_system_parser(&arity).parse(src).map_err(|errs| {

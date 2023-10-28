@@ -52,14 +52,6 @@ impl SpecOutput for ParityGameSpec {
         );
         let preproc_duration = start.elapsed();
 
-        let algo = LocalAlgorithm {
-            fix_system: normalized_system
-                .as_ref()
-                .map_or(&fix_system, |x| &x.0),
-            symbolic_moves: &composed_system,
-            basis: &basis,
-        };
-
         let position = self
             .pg
             .0
@@ -94,12 +86,21 @@ impl SpecOutput for ParityGameSpec {
             .expect(&format!("Cannot find variable with name {}", var_name));
 
         let start = std::time::Instant::now();
+
+        println!("Verification starts from variable {:#?}", var_name);
+        let algo = LocalAlgorithm {
+            fix_system: normalized_system
+                .as_ref()
+                .map_or(fix_system.as_ref(), |x| &x.0),
+            symbolic_moves: &composed_system,
+            basis: &basis,
+        };
+
         let winner = algo.local_check(Position::Eve(EvePos {
             b: "true".to_string(),
             i: index,
         }));
 
-        println!("Verification starts from variable {:#?}", var_name);
         let algo_duration = start.elapsed();
 
         let winner = match winner {
@@ -108,7 +109,7 @@ impl SpecOutput for ParityGameSpec {
         };
 
         Ok(sem_sfe_common::VerificationOutput {
-            fix_system: fix_system.clone(),
+            fix_system: fix_system,
             fix_system_normalized: normalized_system.map(|x| x.0),
             moves_composed: composed_system,
             moves: vec![],

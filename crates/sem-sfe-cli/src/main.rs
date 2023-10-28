@@ -83,7 +83,7 @@ fn main() {
                 sem_sfe_algorithm::parse::parse_fun_arity(arity_src.unwrap())
                     .unwrap();
             let fix_system = sem_sfe_algorithm::parse::parse_fixpoint_system(
-                arity.clone(),
+                &arity,
                 fix_system_src.unwrap(),
             )
             .unwrap();
@@ -99,8 +99,8 @@ fn main() {
                 sem_sfe_algorithm::parse::parse_basis(basis_src.unwrap())
                     .unwrap();
             let moves_system = sem_sfe_algorithm::parse::parse_symbolic_system(
-                arity,
-                basis.clone(),
+                &arity,
+                &basis,
                 moves_src.unwrap(),
             )
             .unwrap();
@@ -114,12 +114,6 @@ fn main() {
             };
             let composed_system = sem_sfe_algorithm::moves_compositor::compose_moves::compose_moves(if normalize { &normalized_system.as_ref().unwrap().0} else {&fix_system}, &moves_system, &basis);
             let preproc = start.elapsed();
-
-            let parity_game = sem_sfe_algorithm::algorithm::LocalAlgorithm {
-                symbolic_moves: &composed_system,
-                fix_system: &fix_system,
-                basis: &basis,
-            };
 
             let pos = Position::Eve(EvePos {
                 b: basis_element,
@@ -148,6 +142,12 @@ fn main() {
                         position
                     )),
             });
+
+            let parity_game = sem_sfe_algorithm::algorithm::LocalAlgorithm {
+                symbolic_moves: &composed_system,
+                fix_system: &fix_system,
+                basis: &basis,
+            };
 
             let start = Instant::now();
             let result = parity_game.local_check(pos);
