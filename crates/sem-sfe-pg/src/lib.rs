@@ -5,7 +5,7 @@ mod pg_to_pbe;
 use pg::PG;
 use sem_sfe_algorithm::{
     algorithm::{EvePos, LocalAlgorithm, Player, Position},
-    compose_moves,
+    moves_compositor::compose_moves,
     normalizer::normalize_system,
 };
 use sem_sfe_common::{InputFlags, SpecOutput, VerificationOutput};

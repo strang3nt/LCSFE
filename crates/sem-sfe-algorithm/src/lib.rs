@@ -1,5 +1,4 @@
-mod moves_compositor;
-pub use moves_compositor::compose_moves;
+pub mod moves_compositor;
 mod parity_game;
 mod parser;
 
