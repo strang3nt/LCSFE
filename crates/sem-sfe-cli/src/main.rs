@@ -117,11 +117,13 @@ fn main() {
 
             let pos = Position::Eve(EvePos {
                 b: basis_element,
-                i: fix_system
+                i: if normalize {
+                
+                normalized_system.as_ref().unwrap().0
                     .iter()
                     .enumerate()
                     .find(|(_, fix_eq)| {
-                        if normalize {
+                        
                             normalized_system
                                 .as_ref()
                                 .unwrap()
@@ -132,20 +134,17 @@ fn main() {
                                     position
                                 ))
                                 == &fix_eq.var
-                        } else {
-                            var_name == &fix_eq.var
-                        }
                     })
                     .map(|(i, _)| i + 1)
                     .expect(&format!(
                         "Cannot find variable with index {}",
                         position
-                    )),
+                    ))} else { position },
             });
 
             let parity_game = sem_sfe_algorithm::algorithm::LocalAlgorithm {
                 symbolic_moves: &composed_system,
-                fix_system: &fix_system,
+                fix_system: normalized_system.as_ref().map(|x| &x.0).unwrap_or(&fix_system),
                 basis: &basis,
             };
 
@@ -162,6 +161,7 @@ fn main() {
                 algorithm_time: algo_time,
                 result: format!("The winner is the {}", result),
             };
+            
             println!(
                 "{}",
                 if explain {
