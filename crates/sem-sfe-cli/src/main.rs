@@ -1,11 +1,11 @@
-use std::{io::BufReader, time::Instant};
+use std::{io::BufReader, time::Instant, collections::HashMap};
 
 use clap::{Parser, Subcommand};
 use sem_sfe_algorithm::{
     algorithm::{EvePos, Position},
     normalizer::normalize_system,
 };
-use sem_sfe_common::{InputFlags, SpecOutput, VerificationOutput};
+use sem_sfe_common::{InputFlags, SpecOutput, VerificationOutput, PreProcOutput};
 use sem_sfe_pg::ParityGameSpec;
 
 #[derive(Debug, Parser)]
@@ -92,7 +92,7 @@ fn main() {
                 .iter()
                 .enumerate()
                 .find(|(i, _)| *i == position - 1)
-                .map(|(_, x)| &x.var)
+                .map(|(_, x)| x.var.to_owned())
                 .unwrap();
 
             let basis =
@@ -107,45 +107,50 @@ fn main() {
 
             let start = Instant::now();
 
-            let normalized_system = if normalize {
-                Some(normalize_system(&fix_system))
+            let fix_system = if normalize {
+                normalize_system(&fix_system)
             } else {
-                None
+                (fix_system, HashMap::new())
             };
-            let composed_system = sem_sfe_algorithm::moves_compositor::compose_moves::compose_moves(if normalize { &normalized_system.as_ref().unwrap().0} else {&fix_system}, &moves_system, &basis);
-            let preproc = start.elapsed();
+            let composed_system = sem_sfe_algorithm::moves_compositor::compose_moves::compose_moves(&fix_system.0, &moves_system, &basis);
+            let preproc_time = start.elapsed();
 
-            let pos = Position::Eve(EvePos {
+            let pos = Position::Eve(EvePos{
                 b: basis_element,
                 i: if normalize {
                 
-                normalized_system.as_ref().unwrap().0
+                fix_system.0
                     .iter()
                     .enumerate()
-                    .find(|(_, fix_eq)| {
-                        
-                            normalized_system
-                                .as_ref()
-                                .unwrap()
-                                .1
-                                .get(var_name)
+                    .find_map(|(i, fix_eq)| {
+                            if 
+                            fix_system.1
+                                .get(&var_name)
                                 .expect(&format!(
                                     "Cannot find variable with index {}",
                                     position
                                 ))
-                                == &fix_eq.var
+                                == &fix_eq.var {
+                                    Some (i + 1)
+                                } else {None}
                     })
-                    .map(|(i, _)| i + 1)
                     .expect(&format!(
                         "Cannot find variable with index {}",
                         position
                     ))} else { position },
-            });
+        });
+            
+            let preproc = PreProcOutput { preproc_time, moves: composed_system, fix_system: fix_system.0, var_map: fix_system.1, var: var_name };
+
+            if explain {
+                preproc.print_explain()
+            } else {
+                println!("{}", preproc)
+            }
 
             let parity_game = sem_sfe_algorithm::algorithm::LocalAlgorithm {
-                symbolic_moves: &composed_system,
-                fix_system: normalized_system.as_ref().map(|x| &x.0).unwrap_or(&fix_system),
-                basis: &basis,
+                symbolic_moves: &preproc.moves,
+                fix_system: &preproc.fix_system,
             };
 
             let start = Instant::now();
@@ -153,23 +158,11 @@ fn main() {
             let algo_time = start.elapsed();
 
             let result = VerificationOutput {
-                fix_system: fix_system,
-                fix_system_normalized: normalized_system.map(|x| x.0),
-                moves: moves_system,
-                moves_composed: composed_system,
-                preproc_time: preproc,
                 algorithm_time: algo_time,
                 result: format!("The winner is the {}", result),
             };
             
-            println!(
-                "{}",
-                if explain {
-                    result.format_verbose()
-                } else {
-                    result.to_string()
-                }
-            )
+            println!("{}", result)
         }
 
         Commands::Pg { game_path, node } => {
@@ -180,17 +173,17 @@ fn main() {
                 node,
             );
 
+            let preproc = p.pre_proc(&InputFlags { normalize }).expect("Preprocessing failed");
+            if explain { 
+                preproc.print_explain();
+            } else {
+                println!("{}", preproc);
+            }
+
             let result = p
-                .verify(&InputFlags { normalize })
+                .verify(&InputFlags { normalize }, &preproc)
                 .expect("Something unexpected happened");
-            println!(
-                "{}",
-                if explain {
-                    result.format_verbose()
-                } else {
-                    result.to_string()
-                }
-            )
+            println!("{}", result);
         }
         Commands::MuAld { .. } => {
             unimplemented!()

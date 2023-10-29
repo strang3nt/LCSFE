@@ -1,72 +1,54 @@
-use std::{fmt::Display, time::Duration};
+use std::{fmt::Display, time::Duration, collections::HashMap};
 
 use sem_sfe_algorithm::ast::{
     fixpoint_system::FixEq,
-    symbolic_exists_moves::{SymbolicExistsMove, SymbolicExistsMoveComposed},
+    symbolic_exists_moves::SymbolicExistsMoveComposed,
 };
 
-pub struct VerificationOutput {
-    pub moves: Vec<SymbolicExistsMove>,
-    pub moves_composed: Vec<SymbolicExistsMoveComposed>,
+pub struct PreProcOutput {
+    pub moves: Vec<SymbolicExistsMoveComposed>,
     pub fix_system: Vec<FixEq>,
-    pub fix_system_normalized: Option<Vec<FixEq>>,
+    pub var_map: HashMap<String, String>,
+    pub var: String,
     pub preproc_time: Duration,
-    pub algorithm_time: Duration,
-    pub result: String,
 }
 
-impl VerificationOutput {
-    pub fn format_verbose(&self) -> String {
-        let fix_system = format!(
-            "Fixpoint system: \n\n{}\n\n",
-            self.fix_system
-                .iter()
-                .map(|x| format!("{}", x))
-                .collect::<Vec<String>>()
-                .join(";\n")
-        );
-        let normalized_system = match &self.fix_system_normalized {
-            None => "".to_owned(),
-            Some(system) => format!(
-                "Normalized fixpoint system: \n\n{}\n\n",
-                system
-                    .iter()
-                    .map(|x| format!("{}", x))
-                    .collect::<Vec<String>>()
-                    .join(";\n")
-            ),
-        };
-        let moves = format!(
-            "Symbolic exists-moves: \n\n{}\n\n",
-            self.moves
-                .iter()
-                .map(|x| format!("{}", x))
-                .collect::<Vec<String>>()
-                .join(";\n")
-        );
-        let composed_moves = format!(
-            "Symbolic exists-moves composed: \n\n{}\n\n",
-            self.moves_composed
-                .iter()
-                .map(|x| format!("{}", x))
-                .collect::<Vec<String>>()
-                .join(";\n")
-        );
-        format!(
-            "{}{}{}{}{}",
-            fix_system, normalized_system, moves, composed_moves, self
-        )
+impl PreProcOutput {
+
+    pub fn print_explain(&self) {
+
+        println!("Fixpoint system:\n");
+        self.fix_system
+            .iter()
+            .for_each(|x| println!("{};", x));
+        println!("");
+
+        println!("Symbolic exists-moves:\n");
+        self.moves
+            .iter()
+            .for_each(|x| println!("{};", x));
+        println!("");
+        println!("{}", self)
     }
+}
+
+impl Display for PreProcOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Preprocessing took: {} sec.", self.preproc_time.as_secs_f32())
+    }
+}
+
+pub struct VerificationOutput {
+    pub algorithm_time: Duration,
+    pub result: String,
 }
 
 impl Display for VerificationOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Preprocessing took: {} sec.\n\
-             Solving the verification task took: {} sec.\n\
+             "Solving the verification task took: {} sec.\n\
              Result: {}",
-            self.preproc_time.as_secs_f32(),
             self.algorithm_time.as_secs_f32(),
             self.result
         )
@@ -78,9 +60,12 @@ pub struct InputFlags {
 }
 
 pub trait SpecOutput {
+
+    fn pre_proc(&self, flags: &InputFlags) -> Result<PreProcOutput, Box<dyn std::error::Error>>;
     /// Execute the local algorithm and return the result wrapped in a string.
     fn verify(
         &self,
         flags: &InputFlags,
+        pre_proc: &PreProcOutput,
     ) -> Result<VerificationOutput, Box<dyn std::error::Error>>;
 }
