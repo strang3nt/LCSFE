@@ -4,7 +4,6 @@ pub mod position;
 mod position_counter_set;
 
 use std::collections::BTreeSet;
-use std::collections::HashSet;
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -16,7 +15,7 @@ use itertools::Itertools;
 use play_data::PlayData;
 use player::Player;
 use position::{AdamPos, EvePos, Position};
-use position_counter_set::{Justification, PositionCounterSet};
+use position_counter_set::PositionCounterSet;
 
 type Playlist =
     Vec<(PlayData, (Box<dyn Iterator<Item = Position>>, Rc<Counter>))>;
@@ -43,7 +42,7 @@ impl<'a> LocalAlgorithm<'a> {
         play_data: PlayData,
         mut pl: Playlist,
         mut assumptions: PositionCounterSet<Instant>,
-        mut decisions: PositionCounterSet<(Justification, Instant)>,
+        mut decisions: PositionCounterSet<Instant>,
     ) -> Player {
         let mut iter = match play_data.pos.clone() {
             Position::Eve(x) => Self::exists_move(
@@ -57,13 +56,10 @@ impl<'a> LocalAlgorithm<'a> {
         if let None = iter.peek() {
             let opponent =
                 Player::get_opponent(&Position::get_controller(&play_data.pos));
-            decisions.get_mut_p(&opponent).insert(
-                play_data.clone(),
-                (Justification::Truth, Instant::now()),
-            );
-            self.backtrack(opponent, play_data.pos, pl, assumptions, decisions)
+            decisions.get_mut_p(&opponent).insert(play_data, Instant::now());
+            self.backtrack(opponent, pl, assumptions, decisions)
         } else if let Some(p) = self.contains(&decisions, &play_data) {
-            self.backtrack(p, play_data.pos, pl, assumptions, decisions)
+            self.backtrack(p, pl, assumptions, decisions)
         } else if let Some((PlayData { k: kp, .. }, _)) =
             pl.iter().find(|(PlayData { pos: cp, .. }, _)| cp == &play_data.pos)
         {
@@ -73,10 +69,10 @@ impl<'a> LocalAlgorithm<'a> {
                 false => Player::Adam,
             };
             assumptions.get_mut_p(&p).insert(
-                PlayData { pos: play_data.pos.clone(), k: kp.clone() },
+                PlayData { pos: play_data.pos, k: kp.clone() },
                 Instant::now(),
             );
-            self.backtrack(p, play_data.pos, pl, assumptions, decisions)
+            self.backtrack(p, pl, assumptions, decisions)
         } else {
             let kp = Rc::new(Self::counter_next(
                 &play_data.k,
@@ -104,14 +100,12 @@ impl<'a> LocalAlgorithm<'a> {
     fn backtrack(
         &self,
         p: Player,
-        c: Position,
         mut pl: Playlist,
         mut assumptions: PositionCounterSet<Instant>,
-        mut decisions: PositionCounterSet<(Justification, Instant)>,
+        mut decisions: PositionCounterSet<Instant>,
     ) -> Player {
         if let Some((play_data, mut pi)) = pl.pop() {
             let cp = &play_data.pos;
-            let kp = &play_data.k;
 
             if let (Some(pos), true) =
                 (pi.0.next(), Position::get_controller(&cp) != p)
@@ -120,69 +114,32 @@ impl<'a> LocalAlgorithm<'a> {
                 pl.push((play_data, pi));
                 self.explore(pp, pl, assumptions, decisions)
             } else {
-                if Position::get_controller(&cp) == p {
-                    decisions.get_mut_p(&p).insert(
-                        play_data.clone(),
-                        (
-                            Justification::SetOfMoves(HashSet::from([
-                                c.clone()
-                            ])),
-                            Instant::now(),
-                        ),
-                    );
-                } else {
-                    decisions.get_mut_p(&p).insert(
-                        PlayData { pos: cp.clone(), k: kp.clone() },
-                        (
-                            match &cp {
-                                Position::Eve(_) => {
-                                    // let _ = self.get_formula(b_i);
-                                    Justification::SetOfMoves(
-                                        HashSet::new(), // self.exists_move(formula)
-                                                        //     .unwrap_or_default()
-                                                        //     .into_iter()
-                                                        //     .map(|x| Position::Adam(x))
-                                                        //     .collect(),
-                                    )
-                                }
-                                Position::Adam(_) => Justification::SetOfMoves(
-                                    HashSet::new(), // self.universal_move(x)
-                                                    //     .into_iter()
-                                                    //     .map(|b_i| Position::Eve(b_i))
-                                                    //     .collect(),
-                                ),
-                            },
-                            Instant::now(),
-                        ),
-                    );
-                }
-                assumptions.get_mut_p(&p).remove(&play_data);
                 let opponent = Player::get_opponent(&p);
-                if let Some(_) = assumptions.get_p(&opponent).get(&play_data) {
-                    Self::forget(
-                        &opponent,
-                        &play_data,
-                        &mut assumptions,
-                        &mut decisions,
-                    );
+                if let Some(after_not_valid) =
+                    assumptions.get_mut_p(&opponent).get_mut(&play_data)
+                {
+                    Self::forget(&opponent, after_not_valid, &mut decisions);
                     assumptions.get_mut_p(&opponent).remove(&play_data);
                 };
+                assumptions.get_mut_p(&p).remove(&play_data);
+                if Position::get_controller(&cp) == p {
+                    decisions.get_mut_p(&p).insert(play_data, Instant::now());
+                }
 
-                self.backtrack(p, play_data.pos, pl, assumptions, decisions)
+                self.backtrack(p, pl, assumptions, decisions)
             }
-        } else { p }
+        } else {
+            p
+        }
     }
 
     #[inline]
     fn forget(
         p: &Player,
-        c: &PlayData,
-        assumptions: &PositionCounterSet<Instant>,
-        decisions: &mut PositionCounterSet<(Justification, Instant)>,
+        after_not_valid: &mut Instant,
+        decisions: &mut PositionCounterSet<Instant>,
     ) {
-        let after_not_valid =
-            &mut assumptions.get_p(p).get(c).cloned().unwrap();
-        decisions.get_mut_p(p).retain(|_, (_, inst)| inst < after_not_valid);
+        decisions.get_mut_p(p).retain(|_, inst| inst < after_not_valid);
     }
 
     #[inline]
@@ -265,7 +222,7 @@ impl<'a> LocalAlgorithm<'a> {
     #[inline]
     pub fn contains(
         &self,
-        decisions: &PositionCounterSet<(Justification, Instant)>,
+        decisions: &PositionCounterSet<Instant>,
         PlayData { pos: c, k }: &PlayData,
     ) -> Option<Player> {
         if decisions.get_p(&Player::Eve).iter().any(

@@ -10,7 +10,9 @@ use sem_sfe_algorithm::{
     moves_compositor::compose_moves,
     normalizer::normalize_system,
 };
-use sem_sfe_common::{InputFlags, SpecOutput, VerificationOutput, PreProcOutput};
+use sem_sfe_common::{
+    InputFlags, PreProcOutput, SpecOutput, VerificationOutput,
+};
 
 pub struct ParityGameSpec {
     pg: PG,
@@ -23,11 +25,12 @@ impl ParityGameSpec {
         src: &mut std::io::BufReader<std::fs::File>,
         node: String,
     ) -> ParityGameSpec {
-
         let mut pg = parser::parse_pg(src).unwrap();
         pg.0.sort_by(|a, b| a.0.parity.partial_cmp(&b.0.parity).unwrap());
 
-        let position = pg.0.iter()
+        let position = pg
+            .0
+            .iter()
             .enumerate()
             .find_map(|(i, x)| if x.0.name == node { Some(i) } else { None })
             .expect(&format!("Cannot find node with name {}", node));
@@ -42,11 +45,24 @@ impl SpecOutput for ParityGameSpec {
         flags: &InputFlags,
         pre_proc: &PreProcOutput,
     ) -> Result<VerificationOutput, Box<dyn std::error::Error>> {
-
         let index = if flags.normalize {
-            pre_proc.fix_system.iter().enumerate().find_map(|(i, fix_eq)| {
-                if pre_proc.var_map.get(&pre_proc.var).unwrap() == &fix_eq.var { Some(i + 1) } else { None }}).unwrap()
-        } else { self.position };
+            pre_proc
+                .fix_system
+                .iter()
+                .enumerate()
+                .find_map(|(i, fix_eq)| {
+                    if pre_proc.var_map.get(&pre_proc.var).unwrap()
+                        == &fix_eq.var
+                    {
+                        Some(i + 1)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap()
+        } else {
+            self.position + 1
+        };
 
         let algo = LocalAlgorithm {
             fix_system: &pre_proc.fix_system,
@@ -54,7 +70,10 @@ impl SpecOutput for ParityGameSpec {
         };
 
         let start = std::time::Instant::now();
-        let winner = algo.local_check(Position::Eve(EvePos{ b: "true".to_string(), i: index}));
+        let winner = algo.local_check(Position::Eve(EvePos {
+            b: "true".to_string(),
+            i: index,
+        }));
         let algo_duration = start.elapsed();
 
         let winner = match winner {
@@ -68,7 +87,10 @@ impl SpecOutput for ParityGameSpec {
         })
     }
 
-    fn pre_proc(&self, flags: &InputFlags) -> Result<PreProcOutput, Box<dyn std::error::Error>> {
+    fn pre_proc(
+        &self,
+        flags: &InputFlags,
+    ) -> Result<PreProcOutput, Box<dyn std::error::Error>> {
         let basis = vec!["true".to_string()];
 
         let start = std::time::Instant::now();
@@ -84,13 +106,16 @@ impl SpecOutput for ParityGameSpec {
         } else {
             (fix_system, HashMap::new())
         };
-        let composed_system = compose_moves::compose_moves(
-            &fix_system.0,
-            &vec![],
-            &basis,
-        );
+        let composed_system =
+            compose_moves::compose_moves(&fix_system.0, &vec![], &basis);
         let preproc_duration = start.elapsed();
 
-        Ok(PreProcOutput { moves: composed_system, fix_system: fix_system.0, var_map: fix_system.1, var: var_name, preproc_time: preproc_duration })
+        Ok(PreProcOutput {
+            moves: composed_system,
+            fix_system: fix_system.0,
+            var_map: fix_system.1,
+            var: var_name,
+            preproc_time: preproc_duration,
+        })
     }
 }

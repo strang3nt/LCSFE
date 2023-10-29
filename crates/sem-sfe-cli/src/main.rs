@@ -1,11 +1,13 @@
-use std::{io::BufReader, time::Instant, collections::HashMap};
+use std::{collections::HashMap, io::BufReader, time::Instant};
 
 use clap::{Parser, Subcommand};
 use sem_sfe_algorithm::{
     algorithm::{EvePos, Position},
     normalizer::normalize_system,
 };
-use sem_sfe_common::{InputFlags, SpecOutput, VerificationOutput, PreProcOutput};
+use sem_sfe_common::{
+    InputFlags, PreProcOutput, SpecOutput, VerificationOutput,
+};
 use sem_sfe_pg::ParityGameSpec;
 
 #[derive(Debug, Parser)]
@@ -115,32 +117,40 @@ fn main() {
             let composed_system = sem_sfe_algorithm::moves_compositor::compose_moves::compose_moves(&fix_system.0, &moves_system, &basis);
             let preproc_time = start.elapsed();
 
-            let pos = Position::Eve(EvePos{
+            let pos = Position::Eve(EvePos {
                 b: basis_element,
                 i: if normalize {
-                
-                fix_system.0
-                    .iter()
-                    .enumerate()
-                    .find_map(|(i, fix_eq)| {
-                            if 
-                            fix_system.1
-                                .get(&var_name)
-                                .expect(&format!(
-                                    "Cannot find variable with index {}",
-                                    position
-                                ))
-                                == &fix_eq.var {
-                                    Some (i + 1)
-                                } else {None}
-                    })
-                    .expect(&format!(
-                        "Cannot find variable with index {}",
-                        position
-                    ))} else { position },
-        });
-            
-            let preproc = PreProcOutput { preproc_time, moves: composed_system, fix_system: fix_system.0, var_map: fix_system.1, var: var_name };
+                    fix_system
+                        .0
+                        .iter()
+                        .enumerate()
+                        .find_map(|(i, fix_eq)| {
+                            if fix_system.1.get(&var_name).expect(&format!(
+                                "Cannot find variable with index {}",
+                                position
+                            )) == &fix_eq.var
+                            {
+                                Some(i + 1)
+                            } else {
+                                None
+                            }
+                        })
+                        .expect(&format!(
+                            "Cannot find variable with index {}",
+                            position
+                        ))
+                } else {
+                    position
+                },
+            });
+
+            let preproc = PreProcOutput {
+                preproc_time,
+                moves: composed_system,
+                fix_system: fix_system.0,
+                var_map: fix_system.1,
+                var: var_name,
+            };
 
             if explain {
                 preproc.print_explain()
@@ -161,7 +171,7 @@ fn main() {
                 algorithm_time: algo_time,
                 result: format!("The winner is the {}", result),
             };
-            
+
             println!("{}", result)
         }
 
@@ -173,8 +183,10 @@ fn main() {
                 node,
             );
 
-            let preproc = p.pre_proc(&InputFlags { normalize }).expect("Preprocessing failed");
-            if explain { 
+            let preproc = p
+                .pre_proc(&InputFlags { normalize })
+                .expect("Preprocessing failed");
+            if explain {
                 preproc.print_explain();
             } else {
                 println!("{}", preproc);

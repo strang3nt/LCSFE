@@ -60,8 +60,6 @@ fn compose_move_eq(
         .collect::<Vec<_>>()
 }
 
-/// Precondition: the input has been sanitized, meaning, for each possible
-///
 #[inline]
 fn projection(f: &Vec<FixEq>, var: &String) -> usize {
     f.iter()

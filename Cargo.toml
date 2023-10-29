@@ -7,3 +7,7 @@ members = [
   "crates/sem-sfe-common",
   "crates/sem-sfe-cli",
 ]
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
