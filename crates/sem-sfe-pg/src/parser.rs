@@ -20,12 +20,12 @@ use std::{
 /// behaviour.
 ///
 pub fn parse_pg(src: &mut BufReader<File>) -> Result<PG, Error> {
-    src.lines().into_iter().skip(1).fold(Ok(PG(vec![])), |acc, elem| {
+    src.lines().skip(1).fold(Ok(PG(vec![])), |acc, elem| {
         match elem {
             Ok(str) if str.trim().is_empty() => acc,
             Ok(str) => {
                 let str: Vec<&str> =
-                    str.trim().split_whitespace().collect::<Vec<_>>();
+                    str.split_whitespace().collect::<Vec<_>>();
 
                 let node = Node {
                     owner: if str[2].parse::<u32>().unwrap() == 0 {

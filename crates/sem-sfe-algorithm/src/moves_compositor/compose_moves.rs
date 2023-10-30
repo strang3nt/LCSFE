@@ -15,11 +15,11 @@ use crate::ast::symbolic_exists_moves::{
 pub fn compose_moves(
     e: &Vec<FixEq>,
     s: &Vec<SymbolicExistsMove>,
-    basis: &Vec<String>,
+    basis: &[String],
 ) -> Vec<SymbolicExistsMoveComposed> {
     e.iter()
         .enumerate()
-        .map(|(i, _)| {
+        .flat_map(|(i, _)| {
             compose_move_eq(e, i, s, basis)
                 .map(
                     |SymbolicExistsMove {
@@ -36,7 +36,6 @@ pub fn compose_moves(
                 )
                 .collect::<Vec<_>>()
         })
-        .flatten()
         .collect()
 }
 
@@ -47,10 +46,10 @@ fn compose_move_eq<'a>(
     system: &'a Vec<FixEq>,
     i: usize,
     s: &'a Vec<SymbolicExistsMove>,
-    basis: &'a Vec<String>,
+    basis: &'a [String],
 ) -> impl Iterator<Item = SymbolicExistsMove> + 'a {
     basis
-        .into_iter()
+        .iter()
         .map(move |b| SymbolicExistsMove {
             formula: compose_move_base(system, b, &system[i].exp, s),
             func_name: (i + 1).to_string(),
@@ -59,7 +58,7 @@ fn compose_move_eq<'a>(
 }
 
 #[inline]
-fn projection(f: &Vec<FixEq>, var: &String) -> usize {
+fn projection(f: &[FixEq], var: &String) -> usize {
     f.iter()
         .enumerate()
         .map(|(i, x)| (x.var.clone(), i + 1))
@@ -113,14 +112,14 @@ fn compose_move_base(
                 func_name == op && b == basis_elem
             })
             .map(|SymbolicExistsMove { formula, .. }| {
-                subst(system, &i, s, formula)
+                subst(system, i, s, formula)
             })
             .unwrap()
             .to_owned(),
 
         ExpFixEq::Id(var) => LogicFormula::BasisElem(
             basis_elem.clone(),
-            projection(system, &var),
+            projection(system, var),
         ),
     }
 }

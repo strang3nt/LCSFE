@@ -37,15 +37,15 @@ pub fn parse_basis(src: String) -> Result<Vec<String>, Vec<ParserError>> {
 }
 
 pub fn parse_symbolic_system(
-    arity: &Vec<(String, usize)>,
-    basis: &Vec<String>,
+    arity: &[(String, usize)],
+    basis: &[String],
     src: String,
 ) -> Result<Vec<SymbolicExistsMove>, ParserError> {
-    moves_parser::symbolic_moves_parser(&arity, &basis).parse(src).map_err(
+    moves_parser::symbolic_moves_parser(arity, basis).parse(src).map_err(
         |errs| {
             ParserError::new(
                 errs.into_iter()
-                    .map(|e| format!("{}", e.to_string()))
+                    .map(|e| e.to_string())
                     .collect::<Vec<String>>()
                     .join("\n- "),
             )
@@ -54,13 +54,13 @@ pub fn parse_symbolic_system(
 }
 
 pub fn parse_fixpoint_system(
-    arity: &Vec<(String, usize)>,
+    arity: &[(String, usize)],
     src: String,
 ) -> Result<Vec<FixEq>, ParserError> {
-    eq_system_parser::eq_system_parser(&arity).parse(src).map_err(|errs| {
+    eq_system_parser::eq_system_parser(arity).parse(src).map_err(|errs| {
         ParserError::new(
             errs.into_iter()
-                .map(|e| format!("{}", e.to_string()))
+                .map(|e| e.to_string())
                 .collect::<Vec<String>>()
                 .join("\n- "),
         )
@@ -73,7 +73,7 @@ pub fn parse_fun_arity(
     arity_parser::arity_parser().parse(src).map_err(|errs| {
         ParserError::new(
             errs.into_iter()
-                .map(|e| format!("{}", e.to_string()))
+                .map(|e|  e.to_string())
                 .collect::<Vec<String>>()
                 .join("\n- "),
         )

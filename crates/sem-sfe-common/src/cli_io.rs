@@ -16,12 +16,10 @@ impl PreProcOutput {
     pub fn print_explain(&self) {
         println!("Fixpoint system:\n");
         self.fix_system.iter().for_each(|x| println!("{};", x));
-        println!("");
 
-        println!("Symbolic exists-moves:\n");
+        println!("\nSymbolic exists-moves:\n");
         self.moves.iter().for_each(|x| println!("{};", x));
-        println!("");
-        println!("{}", self)
+        println!("\n{}", self)
     }
 }
 

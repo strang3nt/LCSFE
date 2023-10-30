@@ -26,7 +26,7 @@ use chumsky::prelude::*;
 /// > Note that the library `Chumsky`, and in general have a limited support for left recursion.
 ///
 pub fn eq_system_parser(
-    fun_with_arities: &Vec<(String, usize)>,
+    fun_with_arities: &[(String, usize)],
 ) -> impl Parser<char, Vec<FixEq>, Error = Simple<char>> {
     let expr = recursive(|expr| {
         let var = text::ident().map(ExpFixEq::Id).padded();
@@ -37,7 +37,7 @@ pub fn eq_system_parser(
                 just(str.clone()).padded().then(
                     expr.clone()
                         .separated_by(just(','))
-                        .exactly(size.clone())
+                        .exactly(*size)
                         .delimited_by(just('('), just(')')),
                 )
             })
@@ -62,14 +62,14 @@ pub fn eq_system_parser(
             )
             .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)));
 
-        let or = and
+        and
             .clone()
             .then(
                 op("or").to(ExpFixEq::Or as fn(_, _) -> _).then(and).repeated(),
             )
-            .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)));
+            .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)))
 
-        or
+        
     });
 
     let fix_type = |c| just(c).padded();

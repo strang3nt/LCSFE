@@ -21,7 +21,7 @@ pub fn pg_to_pbe(pg: &PG, p: Player) -> Vec<FixEq> {
                 _ => panic!("Encountered a type {:#?} while building a fixpoint equation", acc),
             }
         });
-        acc.push(FixEq { var: x, fix_ty: fix_ty, exp: right_hand });
+        acc.push(FixEq { var: x, fix_ty, exp: right_hand });
         acc
 
     })

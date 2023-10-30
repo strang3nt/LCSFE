@@ -33,9 +33,9 @@ impl ParityGameSpec {
             .iter()
             .enumerate()
             .find_map(|(i, x)| if x.0.name == node { Some(i) } else { None })
-            .expect(&format!("Cannot find node with name {}", node));
+            .unwrap_or_else(|| panic!("Cannot find node with name {}", node));
 
-        ParityGameSpec { pg: pg, node, position }
+        ParityGameSpec { pg, node, position }
     }
 }
 

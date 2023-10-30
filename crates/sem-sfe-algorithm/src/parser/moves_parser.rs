@@ -20,8 +20,8 @@ use crate::ast::symbolic_exists_moves::{LogicFormula, SymbolicExistsMove};
 /// > have a limited support for left recursion.
 ///
 pub fn symbolic_moves_parser(
-    fun_with_arities: &Vec<(String, usize)>,
-    basis: &Vec<String>,
+    fun_with_arities: &[(String, usize)],
+    basis: &[String],
 ) -> impl Parser<char, Vec<SymbolicExistsMove>, Error = Simple<char>> {
     let basis =
         basis.iter().map(|str| just(str.clone()).padded()).collect::<Vec<_>>();
@@ -46,16 +46,15 @@ pub fn symbolic_moves_parser(
         let and = atom
             .clone()
             .separated_by(op("and"))
-            .map(|conj| LogicFormula::Conj(conj));
+            .map(LogicFormula::Conj);
 
         let and_or_atom = and.clone().or(atom.clone());
 
-        let or = and_or_atom
+        and_or_atom
             .clone()
             .separated_by(op("or"))
-            .map(|disj| LogicFormula::Disj(disj));
+            .map(LogicFormula::Disj)
 
-        or
     });
 
     let fun_name = fun_with_arities
@@ -73,7 +72,7 @@ pub fn symbolic_moves_parser(
         .then(logic_formula)
         .map(|((base, fun), formula): ((String, String), LogicFormula)| {
             SymbolicExistsMove {
-                formula: formula,
+                formula,
                 basis_elem: base,
                 func_name: fun,
             }

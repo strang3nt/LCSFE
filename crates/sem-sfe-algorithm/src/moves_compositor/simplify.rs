@@ -10,13 +10,12 @@ pub fn simplify(s: LogicFormula) -> LogicFormula {
 
             if simplified.is_empty() {
                 LogicFormula::True
-            } else {
-                if simplified.contains(&LogicFormula::False) {
+            } else if simplified.contains(&LogicFormula::False) {
                     LogicFormula::False
-                } else {
-                    extract(LogicFormula::Conj(simplified))
-                }
+            } else {
+                extract(LogicFormula::Conj(simplified))
             }
+            
         }
 
         LogicFormula::Disj(x) => {
@@ -27,12 +26,10 @@ pub fn simplify(s: LogicFormula) -> LogicFormula {
 
             if simplified.is_empty() {
                 LogicFormula::False
+            } else if simplified.contains(&LogicFormula::True) {
+                LogicFormula::True
             } else {
-                if simplified.contains(&LogicFormula::True) {
-                    LogicFormula::True
-                } else {
-                    extract(LogicFormula::Disj(simplified))
-                }
+                extract(LogicFormula::Disj(simplified))
             }
         }
         _ => s,

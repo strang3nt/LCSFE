@@ -25,8 +25,8 @@ fn normalize_equation(
     match exp {
         ExpFixEq::Id(x) => vec![FixEq {
             var: var_map.get(&var).cloned().unwrap(),
-            fix_ty: fix_ty,
-            exp: var_map.get(&x).cloned().map(|s| ExpFixEq::Id(s)).unwrap(),
+            fix_ty,
+            exp: var_map.get(&x).cloned().map(ExpFixEq::Id).unwrap(),
         }],
 
         ExpFixEq::Operator(name, args) => {
@@ -34,7 +34,7 @@ fn normalize_equation(
 
             let mut op_normalized = vec![FixEq {
                 var: var_map.get(&var).cloned().unwrap(),
-                fix_ty: fix_ty,
+                fix_ty,
                 exp: ExpFixEq::Operator(
                     name,
                     normalized_args
@@ -43,7 +43,7 @@ fn normalize_equation(
                             var_map
                                 .get(&x[0].var)
                                 .cloned()
-                                .map(|s| ExpFixEq::Id(s))
+                                .map(ExpFixEq::Id)
                                 .unwrap()
                         })
                         .collect::<Vec<_>>(),
@@ -63,14 +63,14 @@ fn normalize_equation(
                         var_map
                             .get(&normalized_args[0][0].var)
                             .cloned()
-                            .map(|s| ExpFixEq::Id(s))
+                            .map(ExpFixEq::Id)
                             .unwrap(),
                     ),
                     Box::new(
                         var_map
                             .get(&normalized_args[1][0].var)
                             .cloned()
-                            .map(|s| ExpFixEq::Id(s))
+                            .map(ExpFixEq::Id)
                             .unwrap(),
                     ),
                 ),
@@ -83,20 +83,20 @@ fn normalize_equation(
                 normalize_args(fix_ty.clone(), vec![*l, *r], var_map);
             let mut or_normalized = vec![FixEq {
                 var: var_map.get(&var).cloned().unwrap(),
-                fix_ty: fix_ty,
+                fix_ty,
                 exp: ExpFixEq::Or(
                     Box::new(
                         var_map
                             .get(&normalized_args[0][0].var)
                             .cloned()
-                            .map(|s| ExpFixEq::Id(s))
+                            .map(ExpFixEq::Id)
                             .unwrap(),
                     ),
                     Box::new(
                         var_map
                             .get(&normalized_args[1][0].var)
                             .cloned()
-                            .map(|s| ExpFixEq::Id(s))
+                            .map(ExpFixEq::Id)
                             .unwrap(),
                     ),
                 ),
@@ -134,10 +134,7 @@ fn normalize_args(
 fn flatten_and_remove_identity(
     new_fix_eq: Vec<Vec<FixEq>>,
 ) -> impl Iterator<Item = FixEq> {
-    new_fix_eq.into_iter().flatten().filter(|x| match x {
-        FixEq { var: x, exp: ExpFixEq::Id(y), .. } if x == y => false,
-        _ => true,
-    })
+    new_fix_eq.into_iter().flatten().filter(|x| !matches!(x, FixEq { var: x, exp: ExpFixEq::Id(y), .. } if x == y))
 }
 
 #[cfg(test)]

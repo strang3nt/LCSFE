@@ -22,8 +22,8 @@ type Playlist =
 type Counter = Vec<u32>;
 
 pub struct LocalAlgorithm<'a> {
-    pub fix_system: &'a Vec<FixEq>,
-    pub symbolic_moves: &'a Vec<SymbolicExistsMoveComposed>,
+    pub fix_system: &'a [FixEq],
+    pub symbolic_moves: &'a [SymbolicExistsMoveComposed],
 }
 
 impl<'a> LocalAlgorithm<'a> {
@@ -53,7 +53,7 @@ impl<'a> LocalAlgorithm<'a> {
             Position::Adam(x) => Self::universal_move(x).peekable(),
         };
 
-        if let None = iter.peek() {
+        if iter.peek().is_none() {
             let opponent =
                 Player::get_opponent(&Position::get_controller(&play_data.pos));
             decisions.get_mut_p(&opponent).insert(play_data, Instant::now());
@@ -108,7 +108,7 @@ impl<'a> LocalAlgorithm<'a> {
             let cp = &play_data.pos;
 
             if let (Some(pos), true) =
-                (pi.0.next(), Position::get_controller(&cp) != p)
+                (pi.0.next(), Position::get_controller(cp) != p)
             {
                 let pp = PlayData { pos, k: pi.1.clone() };
                 pl.push((play_data, pi));
@@ -244,7 +244,7 @@ impl<'a> LocalAlgorithm<'a> {
     }
 
     #[inline]
-    fn counter_le_eve(&self, k: &Counter, kp: &Counter) -> bool {
+    fn counter_le_eve(&self, k: &[u32], kp: &[u32]) -> bool {
         let n = k.iter().zip(kp).enumerate().rev().find(|(_, (n, np))| n != np);
         if let Some((i, _)) = n {
             match self.fix_system[i].fix_ty {
@@ -257,7 +257,7 @@ impl<'a> LocalAlgorithm<'a> {
     }
 
     #[inline]
-    fn counter_le_p(&self, k: &Counter, kp: &Counter, p: &Player) -> bool {
+    fn counter_le_p(&self, k: &[u32], kp: &[u32], p: &Player) -> bool {
         match p {
             Player::Eve => self.counter_le_eve(k, kp),
             Player::Adam => self.counter_le_eve(kp, k),
@@ -275,7 +275,7 @@ impl<'a> LocalAlgorithm<'a> {
     ///    $k' < k$ for the existential player,
     ///  - `k <= k'` for a player whenever `k < k'` or $k = k'$, for a player.
     #[inline]
-    pub fn counter_leq_p(&self, k: &Counter, kp: &Counter, p: &Player) -> bool {
+    pub fn counter_leq_p(&self, k: &[u32], kp: &[u32], p: &Player) -> bool {
         k == kp || self.counter_le_p(k, kp, p)
     }
 
@@ -287,16 +287,14 @@ impl<'a> LocalAlgorithm<'a> {
     ///  - `next(k, i) = k'`.
     ///
     #[inline]
-    fn counter_next(k: &Counter, i: usize) -> Counter {
+    fn counter_next(k: &[u32], i: usize) -> Counter {
         if i == 0 {
-            k.clone()
+            k.to_vec()
         } else {
             let i = i - 1;
             let mut kp = vec![0; k.len()];
             kp[i] = k[i] + 1;
-            for j in i + 1..kp.len() {
-                kp[j] = k[j]
-            }
+            kp[(i + 1)..].copy_from_slice(&k[(i + 1)..k.len()]);
             kp
         }
     }

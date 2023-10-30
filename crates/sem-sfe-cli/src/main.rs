@@ -125,20 +125,16 @@ fn main() {
                         .iter()
                         .enumerate()
                         .find_map(|(i, fix_eq)| {
-                            if fix_system.1.get(&var_name).expect(&format!(
-                                "Cannot find variable with index {}",
-                                position
-                            )) == &fix_eq.var
+                            if fix_system.1.get(&var_name).unwrap_or_else(|| panic!("Cannot find variable with index {}",
+                                 position)) == &fix_eq.var
                             {
                                 Some(i + 1)
                             } else {
                                 None
                             }
                         })
-                        .expect(&format!(
-                            "Cannot find variable with index {}",
-                            position
-                        ))
+                        .unwrap_or_else(|| panic!("Cannot find variable with index {}",
+                           position))
                 } else {
                     position
                 },

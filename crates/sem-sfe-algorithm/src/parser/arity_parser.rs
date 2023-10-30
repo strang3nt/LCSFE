@@ -5,7 +5,6 @@ pub fn arity_parser(
     let ident = text::ident().padded();
 
     let fun_arity = ident
-        .clone()
         .then(text::int(10).padded_by(just(' ').repeated()))
         .map(|(name, arity)| (name, arity.parse().unwrap()))
         .separated_by(just('\n'))

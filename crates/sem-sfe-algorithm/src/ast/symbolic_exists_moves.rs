@@ -30,10 +30,10 @@ impl std::fmt::Display for LogicFormula {
         let formula = match self {
             LogicFormula::BasisElem(b, i) => format!("[{}, {}]", b, i),
             LogicFormula::Conj(xs) => {
-                format!("{}", to_vec_of_str(xs).join(" and "))
+                to_vec_of_str(xs).join(" and ").to_string()
             }
             LogicFormula::Disj(xs) => {
-                format!("{}", to_vec_of_str(xs).join(" or "))
+                to_vec_of_str(xs).join(" or ").to_string()
             }
             LogicFormula::False => "false".to_owned(),
             LogicFormula::True => "true".to_owned(),
