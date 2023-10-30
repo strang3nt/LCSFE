@@ -1,0 +1,21 @@
+documentclass: article
+
+classoption:
+  - 11pt
+  - english
+
+author: Alessandro Flori
+
+title: |
+  The `sem-sfe` manual
+
+date: December 15, 2023
+
+lang: en-GB
+
+toc: yes
+
+colorlinks: true
+
+header-includes:
+  - \usepackage{syntax}

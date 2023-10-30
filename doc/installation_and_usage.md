@@ -27,48 +27,81 @@ Options:
 
 : A flag that makes the program print useful information to stdout: the underlying system of fixpoint equations, and the symbolic existential-moves, before and after composition.
 
-Commands:
+## Debug command
 
-debug <ARITY> <FIX_SYSTEM> <BASIS> <MOVES_SYSTEM> <ELEMENT_OF_BASIS> <INDEX>
+The debug has the following structure:
 
-:
+    sem-sfe-cli [OPTIONS] debug <ARITY>\
+    <FIX_SYSTEM> <BASIS> <MOVES_SYSTEM> <ELEMENT_OF_BASIS> <INDEX>
 
-pg <GAME_PATH> <NODE>
+`<ARITY>`
 
-:
+:A path to a file containing definitions of functions. The file must be
+formatted as follows: each line contains a string of characters and an
+integer number. The string represents the name of a function, which
+is going to be used in the system of fixpoint equations. The integer
+represents the arity of the function. The names and and or can be
+declared, but will be ignored.
 
-mu-ald <LTS_ALD> <MU_FORMULA>  
+`<FIX_SYSTEM>`
 
-:
+: A path to a file containing the definition of a system of fixed
+point equations. A function must be an either an and or or function,
+or it must be specified in the arity file. We are going to give a precise
+grammar specification in Input file grammar specification.
 
-help <COMMAND>
+`<BASIS>`
 
-: Prints information about the tool, or the help of a command, if given.
+: A path to a file containing all the elements of the basis. Each line
+must contain a string, which is an element of the basis.
 
-## Tutorial
+`<MOVES_SYSTEM>`
 
-This is a brief tutorial that provides a few examples for all types commands.
-We suppose to be in the terminal emulator, in the following location: `sem-lmc-cli/target/release`.
-The project should be already compiled for release.
-The repository contains the files we are going to use, under the folder `sem-lmc-cli/tests`.
+: A path to a file containing the symbolic $\exists$-moves for the
+system of fixpoint equations. There must be a symbolic $\exists$-move for
+all possible combinations of functions introduced in the file, and basis
+elements introduced in the file. We give the grammar specification in
+Input file grammar specification.
 
-### Parity games
+`<ELEMENT_OF_BASIS>`
 
-The command:
+: The element of the basis which we want to verify is
+part of the solution of the system of fixpoint equations.
 
-    ./sem-lmc-cli pg -g ../../tests/parity_games/test_03.gm -n Antarctica
+`<INDEX>`
 
-will parse the the file below, in PGSolver format:
+: A number representing the equation, and thus the variable which
+is going to be substituted by the element of the basis specified.
+2.1.1 Input file grammar specification
+In the following we give the grammar, in EBNF form, for systems of fixpoint
+equations and symbolic $\exists$-moves.
 
-```
-parity 4;
-0 6 1 4,2 "Africa";
-4 7 1 0 "Antarctica";
-1 5 1 2,3 "America";
-3 6 0 4,2 "Australia";
-2 8 0 3,1,0,4 "Asia";
-```
+The following EBNF grammar describes a list of symbolic $\exists$-moves:
 
-and ask whether if the existential player can win from vertex `Antarctica`.
+\begin{grammar}
 
-### $\mu$-calculus
+<EqList> ::= <Eq> <EqList> `;' | <Eq> `;'
+
+<Eq> ::= <Id> `=max' <ExpEq> | <Id> `=min' <ExpEq>
+
+<ExpEq> ::= <OrExpEq>
+
+<Atom> ::= <Id> | `(' <ExpEq> `)' | <CustomExpEq>
+
+<AndExpEq> ::= <Atom> (`and' <Atom>)*
+
+<OrExpEq> ::= <AndExpEq> ( `or' <AndExpEq> )*
+
+<CustomExpEq> ::= <Op> `(' <ExpEq> (`,' <ExpEq>)* `)'
+
+<Id> ::= ( a C-style identifier )
+
+<Op> ::= ( any ASCII string )
+
+\end{grammar}
+
+Notice that the syntactic category $AndExpEq$ has a higher precedence than
+$OrExpEq$, this way we enforce the precedence of the operator and over or.
+Tokens $Id$ and $Op$ are strings, the latter represents the name of an operator
+provided by the user. If the goal is to parse $\mu$-calculus formulae, a possible
+definition for OP would be $Op \in\{diamond,box\}$.
