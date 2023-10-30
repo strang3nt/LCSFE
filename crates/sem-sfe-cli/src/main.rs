@@ -110,7 +110,7 @@ fn main() {
             let start = Instant::now();
 
             let fix_system = if normalize {
-                normalize_system(&fix_system)
+                normalize_system(fix_system)
             } else {
                 (fix_system, HashMap::new())
             };

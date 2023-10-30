@@ -102,7 +102,7 @@ impl SpecOutput for ParityGameSpec {
             .map(|(_, x)| x.var.to_owned())
             .unwrap();
         let fix_system = if flags.normalize {
-            normalize_system(&fix_system)
+            normalize_system(fix_system)
         } else {
             (fix_system, HashMap::new())
         };
