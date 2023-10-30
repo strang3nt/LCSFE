@@ -21,7 +21,6 @@ pub fn compose_moves(
         .enumerate()
         .map(|(i, _)| {
             compose_move_eq(e, i, s, basis)
-                .into_iter()
                 .map(
                     |SymbolicExistsMove {
                          formula,
@@ -29,7 +28,7 @@ pub fn compose_moves(
                          basis_elem: base_elem,
                      }| {
                         SymbolicExistsMoveComposed {
-                            formula: simplify::simplify(&formula),
+                            formula: simplify::simplify(formula),
                             func_name: func_name.parse().unwrap(),
                             basis_elem: base_elem,
                         }
@@ -44,20 +43,19 @@ pub fn compose_moves(
 /// Produces the moves for an expression of the fixpoint system, one for each
 /// element of the base.
 #[inline]
-fn compose_move_eq(
-    system: &Vec<FixEq>,
+fn compose_move_eq<'a>(
+    system: &'a Vec<FixEq>,
     i: usize,
-    s: &Vec<SymbolicExistsMove>,
-    basis: &Vec<String>,
-) -> Vec<SymbolicExistsMove> {
+    s: &'a Vec<SymbolicExistsMove>,
+    basis: &'a Vec<String>,
+) -> impl Iterator<Item = SymbolicExistsMove> + 'a {
     basis
-        .iter()
-        .map(|b| SymbolicExistsMove {
+        .into_iter()
+        .map(move |b| SymbolicExistsMove {
             formula: compose_move_base(system, b, &system[i].exp, s),
             func_name: (i + 1).to_string(),
             basis_elem: b.clone(),
         })
-        .collect::<Vec<_>>()
 }
 
 #[inline]
@@ -139,7 +137,16 @@ fn subst(
 ) -> LogicFormula {
     match curr_formula {
         LogicFormula::BasisElem(b, i) => {
-            compose_move_base(f, b, &get_args(sub_exp)[i - 1], moves)
+
+            let args = match sub_exp {
+                ExpFixEq::And(l, r) | ExpFixEq::Or(l, r) => {
+                    vec![*l.clone(), *r.clone()]
+                }
+                ExpFixEq::Operator(_, args) => args.to_vec(),
+                ExpFixEq::Id(_) => vec![sub_exp.clone()],
+            };
+
+            compose_move_base(f, b, &args[i - 1], moves)
         }
         LogicFormula::Conj(x) => LogicFormula::Conj(
             x.iter().map(|a| subst(f, sub_exp, moves, a)).collect(),
@@ -148,17 +155,6 @@ fn subst(
             x.iter().map(|a| subst(f, sub_exp, moves, a)).collect(),
         ),
         _ => curr_formula.to_owned(),
-    }
-}
-
-/// output the argument of a function
-fn get_args(exp: &ExpFixEq) -> Vec<ExpFixEq> {
-    match exp {
-        ExpFixEq::And(l, r) | ExpFixEq::Or(l, r) => {
-            vec![*l.clone(), *r.clone()]
-        }
-        ExpFixEq::Operator(_, args) => args.clone(),
-        id @ ExpFixEq::Id(_) => vec![id.clone()],
     }
 }
 

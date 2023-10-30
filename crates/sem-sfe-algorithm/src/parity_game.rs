@@ -90,7 +90,7 @@ impl<'a> LocalAlgorithm<'a> {
                 ),
             };
             let pp =
-                PlayData { pos: pi.0.next().unwrap().clone(), k: kp.clone() };
+                PlayData { pos: pi.0.next().unwrap(), k: kp };
             pl.push((play_data, pi));
 
             self.explore(pp, pl, assumptions, decisions)
@@ -114,6 +114,8 @@ impl<'a> LocalAlgorithm<'a> {
                 pl.push((play_data, pi));
                 self.explore(pp, pl, assumptions, decisions)
             } else {
+
+                let decision_time = Instant::now();
                 let opponent = Player::get_opponent(&p);
                 if let Some(after_not_valid) =
                     assumptions.get_mut_p(&opponent).get_mut(&play_data)
@@ -121,10 +123,9 @@ impl<'a> LocalAlgorithm<'a> {
                     Self::forget(&opponent, after_not_valid, &mut decisions);
                     assumptions.get_mut_p(&opponent).remove(&play_data);
                 };
+
                 assumptions.get_mut_p(&p).remove(&play_data);
-                if Position::get_controller(&cp) == p {
-                    decisions.get_mut_p(&p).insert(play_data, Instant::now());
-                }
+                decisions.get_mut_p(&p).insert(play_data, decision_time);
 
                 self.backtrack(p, pl, assumptions, decisions)
             }

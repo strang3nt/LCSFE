@@ -1,12 +1,11 @@
 use crate::ast::symbolic_exists_moves::LogicFormula;
 
-pub fn simplify(s: &LogicFormula) -> LogicFormula {
+pub fn simplify(s: LogicFormula) -> LogicFormula {
     match s {
         LogicFormula::Conj(x) => {
             let simplified = x
-                .iter()
-                .map(|i| extract(simplify(i)))
-                .filter(|i| i != &LogicFormula::True)
+                .into_iter()
+                .filter_map(|i| {let i = simplify(i); if i != LogicFormula::True { Some (i)} else { None }})
                 .collect::<Vec<_>>();
 
             if simplified.is_empty() {
@@ -22,9 +21,8 @@ pub fn simplify(s: &LogicFormula) -> LogicFormula {
 
         LogicFormula::Disj(x) => {
             let simplified = x
-                .iter()
-                .map(|i| simplify(i))
-                .filter(|i| i != &LogicFormula::False)
+                .into_iter()
+                .filter_map(|i| {let i = simplify(i); if i != LogicFormula::False { Some(i) } else { None }})
                 .collect::<Vec<_>>();
 
             if simplified.is_empty() {
@@ -37,7 +35,7 @@ pub fn simplify(s: &LogicFormula) -> LogicFormula {
                 }
             }
         }
-        _ => s.clone(),
+        _ => s,
     }
 }
 
@@ -61,7 +59,7 @@ mod tests {
             LogicFormula::False,
             LogicFormula::BasisElem("b".to_string(), 3),
         ]);
-        assert_eq!(simplify(&formula), LogicFormula::False);
+        assert_eq!(simplify(formula), LogicFormula::False);
     }
 
     #[test]
@@ -72,7 +70,7 @@ mod tests {
             LogicFormula::BasisElem("b".to_string(), 3),
         ]);
         assert_eq!(
-            simplify(&formula),
+            simplify(formula),
             LogicFormula::Conj(vec![
                 LogicFormula::BasisElem("a".to_string(), 1),
                 LogicFormula::BasisElem("b".to_string(), 3)
@@ -87,7 +85,7 @@ mod tests {
             LogicFormula::True,
             LogicFormula::BasisElem("b".to_string(), 3),
         ]);
-        assert_eq!(simplify(&formula), LogicFormula::True);
+        assert_eq!(simplify(formula), LogicFormula::True);
     }
 
     #[test]
@@ -98,7 +96,7 @@ mod tests {
             LogicFormula::BasisElem("b".to_string(), 3),
         ]);
         assert_eq!(
-            simplify(&formula),
+            simplify(formula),
             LogicFormula::Disj(vec![
                 LogicFormula::BasisElem("a".to_string(), 1),
                 LogicFormula::BasisElem("b".to_string(), 3)
@@ -118,7 +116,7 @@ mod tests {
             LogicFormula::BasisElem("b".to_string(), 3),
         ]);
         assert_eq!(
-            simplify(&formula),
+            simplify(formula),
             LogicFormula::Disj(vec![
                 LogicFormula::BasisElem("a".to_string(), 1),
                 LogicFormula::BasisElem("b".to_string(), 3)
@@ -138,7 +136,7 @@ mod tests {
             LogicFormula::BasisElem("b".to_string(), 3),
         ]);
         assert_eq!(
-            simplify(&formula),
+            simplify(formula),
             LogicFormula::Disj(vec![
                 LogicFormula::BasisElem("a".to_string(), 1),
                 LogicFormula::Conj(vec![
@@ -153,7 +151,7 @@ mod tests {
     #[test]
     fn simplify_extract() {
         assert_eq!(
-            simplify(&LogicFormula::Conj(vec![
+            simplify(LogicFormula::Conj(vec![
                 LogicFormula::True,
                 LogicFormula::Conj(vec![
                     LogicFormula::BasisElem("{d}".to_string(), 1),
