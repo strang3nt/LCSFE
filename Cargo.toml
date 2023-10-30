@@ -2,8 +2,12 @@
 resolver = "2"
 
 members = [
-  "crates/sem-lmc-algorithm",
-  "crates/sem-lmc-pg",
-  "crates/sem-lmc-common",
-  "crates/sem-lmc-cli",
+  "crates/sem-sfe-algorithm",
+  "crates/sem-sfe-pg",
+  "crates/sem-sfe-common",
+  "crates/sem-sfe-cli",
 ]
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
