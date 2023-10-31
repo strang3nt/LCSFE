@@ -19,7 +19,7 @@ in a system of fixpoint equations and generate the symbolic $\exists$-moves.
 ![A diagram that represents the design of `sem-sfe`\label{img:design}](http://www.plantuml.com/plantuml/png/NL4zRzj03DtvAuXC7Ie1MWiZID6Xo930WBq57LY9fnny7zSZPTWj-jzBoKeJ6ngEUE_naOzw4AMgKmpGvrXougGe71jnZ7y0IwwAT_QHOEa0tqLtMwfUppXIv8NUVh-Yd_AHvGA8rrmNpTEtMmlXUkc-8fvpZHJyxvLyXhzGEcmQ6x8MvhGYbzSqBxl2FMgb985iue-vTRU7bpLFqmU_OFQ2JyhLKSzlwHuxW9ILCR1Jp6u6lYPyr-ahAVB9uh10P7tDWw2hEMAX_a0Zozm5wx0ME0qu6zxOsa9xEfYOnCpBf4ZeV62BdvHyycaq1CIoUETxKf_JPoGpanmPZrp_mw0aXnQtDH_zC3kYd4KvsXXm_iG3bcpx8_-Q5hsiFkVuCmVV0v-yg3Hn_bCVzztjSTEsyvc-u6OpSE2HbE_luN6vTEa0ZBFoant9r6_LWrbCCVm3)
 
 The diagram \ref{img:design} represents how the various modules of `sem-sfe` are
-related. In the diagram, a "Spec translator" represents both `sem-sfe-pg` and
+related. In the diagram, "Spec translator" represents both `sem-sfe-pg` and
 `sem-sfe-mu-ald`. From the diagram we understand that `sem-sfe-algorithm` offers
 an interface, represented by the ball notation, which is accessed by every other
 module. The Spec translator module is used by `sem-sfe-cli`: the former is able to

@@ -4,15 +4,13 @@ use chumsky::prelude::*;
 ///
 /// Returns a parser for the following grammar:
 ///
-///
-/// EqList ::= Eq EqList ';' | Eq ';'
-/// Eq ::= ID '=max' ExpEq | ID '=min' ExpEq
-/// ExpEq ::= OrExpEq
-/// Atom ::= ID | '(' ExpEq ')' | CustomExpEq
-/// AndExpEq ::= Atom ('and' Atom)*
-/// OrExpEq ::= AndExpEq ('or' AndExpEq)*
-/// CustomExpEq ::= OP '(' ExpEq (',' ExpEq)* ')'
-///
+// <SymMovList>  ::= <SymMovEq> <SymMovList> `;' | <SymMovEq> `;'
+// <SymMovEq>    ::= `phi' `(' <Id> `)' `(' <Num> `)' `=' <Disjunction>
+// <Conjunction> ::= <Atom> (`and' <Atom>)*
+// <Disjunction> ::= <Conjunction> (`or' <Conjunction>)*
+// <Atom>        ::= `[' <Id> `,' <Num> `]' | `true' | `false' | `(' <Disjunction> `)'
+// <Id>          ::= ( a C-style identifier )
+// <Num>         ::= ( a natural number )
 ///
 /// As it is, this grammar is able to parse only a normalized system of symbolic
 /// equations: each equation is a disjunction of conjunctions.

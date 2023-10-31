@@ -58,7 +58,7 @@ enum Commands {
         node: String,
     },
     #[command(arg_required_else_help = true)]
-    MuAld { lts_ald: std::path::PathBuf, fix_system: std::path::PathBuf },
+    MuAld { lts_ald: std::path::PathBuf, mu_calc_formula: std::path::PathBuf, state: String },
 }
 
 fn main() {

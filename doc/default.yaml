@@ -3,11 +3,12 @@ from: markdown
 to: pdf
 
 input-files:
-  - installation_and_usage.md
+  
   - project_structure.md
+  - installation_and_usage.md
   - mu_ald_module.md
-  - examples.md
   - pg_module.md
+  - examples.md
   - comparison_and_benchmarks.md
 
 pdf-engine: pdflatex

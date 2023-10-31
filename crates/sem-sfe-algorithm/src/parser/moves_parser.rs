@@ -5,12 +5,14 @@ use crate::ast::symbolic_exists_moves::{LogicFormula, SymbolicExistsMove};
 /// Returns a parser for the following grammar:
 ///
 ///
-/// SymMovList ::= SymMovEq SymMovList ';' | SymMovEq ';'
-/// SymMovEq ::= 'phi' '(' ID ')' '(' NUM ')' '=' LogicFormula
-/// LogicFormula ::= Disjunction
-/// Conjunction ::= Atom ('and' Atom)*
-/// Disjunction ::= Conjunction ('or' Conjunction)*
-/// Atom ::= '[' ID ',' NUM ']' | 'true' | 'false' | '(' LogicFormula ')'
+// <EqList>      ::= <Eq> <EqList> `;' | <Eq> `;'
+// <Eq>          ::= <Id> `=max' <OrExpEq> | <Id> `=min' <OrExpEq>
+// <Atom>        ::= <Id> | `(' <OrExpEq> `)' | <CustomExpEq>
+// <AndExpEq>    ::= <Atom> (`and' <Atom>)*
+// <OrExpEq>     ::= <AndExpEq> ( `or' <AndExpEq> )*
+// <CustomExpEq> ::= <Op> `(' <OrExpEq> (`,' <OrExpEq>)* `)'
+// <Id>          ::= ( a C-style identifier )
+// <Op>          ::= ( any ASCII string )
 ///
 ///
 /// Where `ID in String` and `true`, `false` are respectively syntactic sugar for an empty conjunction and
