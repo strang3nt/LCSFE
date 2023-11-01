@@ -58,7 +58,11 @@ enum Commands {
         node: String,
     },
     #[command(arg_required_else_help = true)]
-    MuAld { lts_ald: std::path::PathBuf, fix_system: std::path::PathBuf },
+    MuAld {
+        lts_ald: std::path::PathBuf,
+        fix_system: std::path::PathBuf,
+        state: String,
+    },
 }
 
 fn main() {
@@ -125,16 +129,26 @@ fn main() {
                         .iter()
                         .enumerate()
                         .find_map(|(i, fix_eq)| {
-                            if fix_system.1.get(&var_name).unwrap_or_else(|| panic!("Cannot find variable with index {}",
-                                 position)) == &fix_eq.var
+                            if fix_system.1.get(&var_name).unwrap_or_else(
+                                || {
+                                    panic!(
+                                        "Cannot find variable with index {}",
+                                        position
+                                    )
+                                },
+                            ) == &fix_eq.var
                             {
                                 Some(i + 1)
                             } else {
                                 None
                             }
                         })
-                        .unwrap_or_else(|| panic!("Cannot find variable with index {}",
-                           position))
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "Cannot find variable with index {}",
+                                position
+                            )
+                        })
                 } else {
                     position
                 },
@@ -179,22 +193,38 @@ fn main() {
                 node,
             );
 
-            let preproc = p
-                .pre_proc(&InputFlags { normalize })
-                .expect("Preprocessing failed");
-            if explain {
-                preproc.print_explain();
-            } else {
-                println!("{}", preproc);
-            }
-
-            let result = p
-                .verify(&InputFlags { normalize }, &preproc)
-                .expect("Something unexpected happened");
-            println!("{}", result);
+            print_results(p, explain, InputFlags { normalize })
         }
-        Commands::MuAld { .. } => {
-            unimplemented!()
+        Commands::MuAld { lts_ald, fix_system, state } => {
+            let mu_ald = sem_sfe_mu_ald::MuAld::new(
+                &mut BufReader::new(
+                    std::fs::File::open(lts_ald.as_path()).unwrap(),
+                ),
+                &mut BufReader::new(
+                    std::fs::File::open(fix_system.as_path()).unwrap(),
+                ),
+                state,
+            );
+
+            print_results(mu_ald.unwrap(), explain, InputFlags { normalize })
         }
     };
+}
+
+fn print_results(
+    results: impl SpecOutput,
+    explain: bool,
+    input_flags: InputFlags,
+) {
+    let preproc = results.pre_proc(&input_flags).expect("Preprocessing failed");
+    if explain {
+        preproc.print_explain();
+    } else {
+        println!("{}", preproc);
+    }
+
+    let result = results
+        .verify(&input_flags, &preproc)
+        .expect("Something unexpected happened");
+    println!("{}", result);
 }

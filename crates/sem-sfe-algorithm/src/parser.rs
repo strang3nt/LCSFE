@@ -73,7 +73,7 @@ pub fn parse_fun_arity(
     arity_parser::arity_parser().parse(src).map_err(|errs| {
         ParserError::new(
             errs.into_iter()
-                .map(|e|  e.to_string())
+                .map(|e| e.to_string())
                 .collect::<Vec<String>>()
                 .join("\n- "),
         )

@@ -43,18 +43,11 @@ pub fn symbolic_moves_parser(
 
         let op = |c| just(c).padded();
 
-        let and = atom
-            .clone()
-            .separated_by(op("and"))
-            .map(LogicFormula::Conj);
+        let and = atom.clone().separated_by(op("and")).map(LogicFormula::Conj);
 
         let and_or_atom = and.clone().or(atom.clone());
 
-        and_or_atom
-            .clone()
-            .separated_by(op("or"))
-            .map(LogicFormula::Disj)
-
+        and_or_atom.clone().separated_by(op("or")).map(LogicFormula::Disj)
     });
 
     let fun_name = fun_with_arities
@@ -71,11 +64,7 @@ pub fn symbolic_moves_parser(
         .then_ignore(just('=').padded())
         .then(logic_formula)
         .map(|((base, fun), formula): ((String, String), LogicFormula)| {
-            SymbolicExistsMove {
-                formula,
-                basis_elem: base,
-                func_name: fun,
-            }
+            SymbolicExistsMove { formula, basis_elem: base, func_name: fun }
         });
 
     let symbolic_move_list =

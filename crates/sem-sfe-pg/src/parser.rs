@@ -24,8 +24,7 @@ pub fn parse_pg(src: &mut BufReader<File>) -> Result<PG, Error> {
         match elem {
             Ok(str) if str.trim().is_empty() => acc,
             Ok(str) => {
-                let str: Vec<&str> =
-                    str.split_whitespace().collect::<Vec<_>>();
+                let str: Vec<&str> = str.split_whitespace().collect::<Vec<_>>();
 
                 let node = Node {
                     owner: if str[2].parse::<u32>().unwrap() == 0 {

@@ -48,13 +48,11 @@ fn compose_move_eq<'a>(
     s: &'a Vec<SymbolicExistsMove>,
     basis: &'a [String],
 ) -> impl Iterator<Item = SymbolicExistsMove> + 'a {
-    basis
-        .iter()
-        .map(move |b| SymbolicExistsMove {
-            formula: compose_move_base(system, b, &system[i].exp, s),
-            func_name: (i + 1).to_string(),
-            basis_elem: b.clone(),
-        })
+    basis.iter().map(move |b| SymbolicExistsMove {
+        formula: compose_move_base(system, b, &system[i].exp, s),
+        func_name: (i + 1).to_string(),
+        basis_elem: b.clone(),
+    })
 }
 
 #[inline]
@@ -117,10 +115,9 @@ fn compose_move_base(
             .unwrap()
             .to_owned(),
 
-        ExpFixEq::Id(var) => LogicFormula::BasisElem(
-            basis_elem.clone(),
-            projection(system, var),
-        ),
+        ExpFixEq::Id(var) => {
+            LogicFormula::BasisElem(basis_elem.clone(), projection(system, var))
+        }
     }
 }
 
@@ -136,7 +133,6 @@ fn subst(
 ) -> LogicFormula {
     match curr_formula {
         LogicFormula::BasisElem(b, i) => {
-
             let args = match sub_exp {
                 ExpFixEq::And(l, r) | ExpFixEq::Or(l, r) => {
                     vec![*l.clone(), *r.clone()]

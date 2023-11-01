@@ -62,14 +62,11 @@ pub fn eq_system_parser(
             )
             .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)));
 
-        and
-            .clone()
+        and.clone()
             .then(
                 op("or").to(ExpFixEq::Or as fn(_, _) -> _).then(and).repeated(),
             )
             .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)))
-
-        
     });
 
     let fix_type = |c| just(c).padded();

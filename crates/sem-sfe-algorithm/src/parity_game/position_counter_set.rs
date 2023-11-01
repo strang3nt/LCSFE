@@ -10,7 +10,10 @@ pub struct PositionCounterSet<T> {
 
 impl<T> PositionCounterSet<T> {
     pub fn new() -> PositionCounterSet<T> {
-        PositionCounterSet { eve: FxHashMap::default(), adam: FxHashMap::default() }
+        PositionCounterSet {
+            eve: FxHashMap::default(),
+            adam: FxHashMap::default(),
+        }
     }
 
     pub fn get_p(&self, p: &Player) -> &FxHashMap<PlayData, T> {

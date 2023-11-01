@@ -5,23 +5,36 @@ pub fn simplify(s: LogicFormula) -> LogicFormula {
         LogicFormula::Conj(x) => {
             let simplified = x
                 .into_iter()
-                .filter_map(|i| {let i = simplify(i); if i != LogicFormula::True { Some (i)} else { None }})
+                .filter_map(|i| {
+                    let i = simplify(i);
+                    if i != LogicFormula::True {
+                        Some(i)
+                    } else {
+                        None
+                    }
+                })
                 .collect::<Vec<_>>();
 
             if simplified.is_empty() {
                 LogicFormula::True
             } else if simplified.contains(&LogicFormula::False) {
-                    LogicFormula::False
+                LogicFormula::False
             } else {
                 extract(LogicFormula::Conj(simplified))
             }
-            
         }
 
         LogicFormula::Disj(x) => {
             let simplified = x
                 .into_iter()
-                .filter_map(|i| {let i = simplify(i); if i != LogicFormula::False { Some(i) } else { None }})
+                .filter_map(|i| {
+                    let i = simplify(i);
+                    if i != LogicFormula::False {
+                        Some(i)
+                    } else {
+                        None
+                    }
+                })
                 .collect::<Vec<_>>();
 
             if simplified.is_empty() {

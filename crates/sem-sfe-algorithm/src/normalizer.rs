@@ -134,7 +134,9 @@ fn normalize_args(
 fn flatten_and_remove_identity(
     new_fix_eq: Vec<Vec<FixEq>>,
 ) -> impl Iterator<Item = FixEq> {
-    new_fix_eq.into_iter().flatten().filter(|x| !matches!(x, FixEq { var: x, exp: ExpFixEq::Id(y), .. } if x == y))
+    new_fix_eq.into_iter().flatten().filter(
+        |x| !matches!(x, FixEq { var: x, exp: ExpFixEq::Id(y), .. } if x == y),
+    )
 }
 
 #[cfg(test)]

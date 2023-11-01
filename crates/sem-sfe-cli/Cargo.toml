@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 sem-sfe-pg =        { path = "../sem-sfe-pg" }
+sem-sfe-mu-ald =        { path = "../sem-sfe-mu-ald" }
 sem-sfe-common =    { path = "../sem-sfe-common" }
 sem-sfe-algorithm = { path = "../sem-sfe-algorithm" }
 clap = { version = "4.0", features = ["derive"] }

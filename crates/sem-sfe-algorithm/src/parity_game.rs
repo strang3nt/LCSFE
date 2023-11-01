@@ -89,8 +89,7 @@ impl<'a> LocalAlgorithm<'a> {
                     kp.clone(),
                 ),
             };
-            let pp =
-                PlayData { pos: pi.0.next().unwrap(), k: kp };
+            let pp = PlayData { pos: pi.0.next().unwrap(), k: kp };
             pl.push((play_data, pi));
 
             self.explore(pp, pl, assumptions, decisions)
@@ -114,7 +113,6 @@ impl<'a> LocalAlgorithm<'a> {
                 pl.push((play_data, pi));
                 self.explore(pp, pl, assumptions, decisions)
             } else {
-
                 let decision_time = Instant::now();
                 let opponent = Player::get_opponent(&p);
                 if let Some(after_not_valid) =
