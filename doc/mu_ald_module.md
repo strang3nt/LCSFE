@@ -47,6 +47,9 @@ The following EBNF grammar describes a $\mu$-calculus formula.
 
 \grammarindent1.3in
 \begin{grammar}
+
+<Label> ::= <Id> | `!' <Id> | `true'
+
 <Atom> ::= `tt' | `ff' | `(' <Disjunction> `)'
 \alt `<' <Label> `>' <Disjunction>
 \alt `[' <Label> `]' <Disjunction>
@@ -56,8 +59,6 @@ The following EBNF grammar describes a $\mu$-calculus formula.
 <Conjunction> ::= <Atom> (`&&' <Atom>)*
 
 <Disjuction>  ::= <Conjunction> (`||' <Conjunction>)*
-
-<Label> ::= `true' | <Id>
 
 <Id> ::= ( a C-style identifier )
 \end{grammar}
