@@ -1,3 +1,5 @@
+use std::{collections::HashMap, hash::Hash};
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SymbolicExistsMoveComposed {
     pub formula: LogicFormula,
@@ -5,13 +7,23 @@ pub struct SymbolicExistsMoveComposed {
     pub basis_elem: String,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct SymbolicExistsMove {
-    pub formula: LogicFormula,
-    pub func_name: String,
-    pub basis_elem: String,
+#[derive(Debug)]
+pub struct SymbolicExistsMoves {
+    pub basis_map: HashMap<String, usize>,
+    pub fun_map: HashMap<String, usize>,
+    pub formulas: Vec<LogicFormula>,
 }
 
+impl SymbolicExistsMoves {
+    pub fn get_formula(
+        &self,
+        basis_elem: &String,
+        fun: &String,
+    ) -> &LogicFormula {
+        &self.formulas[self.fun_map.get(fun).unwrap() * self.basis_map.len()
+            + self.basis_map.get(basis_elem).unwrap()]
+    }
+}
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum LogicFormula {
     BasisElem(String, usize),
@@ -44,16 +56,6 @@ impl std::fmt::Display for LogicFormula {
 }
 
 impl std::fmt::Display for SymbolicExistsMoveComposed {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "phi({})({}) = {}",
-            self.basis_elem, self.func_name, self.formula
-        )
-    }
-}
-
-impl std::fmt::Display for SymbolicExistsMove {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,

@@ -1,7 +1,7 @@
 use super::simplify;
 use crate::ast::fixpoint_system::{ExpFixEq, FixEq};
 use crate::ast::symbolic_exists_moves::{
-    LogicFormula, SymbolicExistsMove, SymbolicExistsMoveComposed,
+    LogicFormula, SymbolicExistsMoveComposed, SymbolicExistsMoves,
 };
 
 /// Takes a fixpoint system E, and a collection of symbolic exists-moves
@@ -14,7 +14,7 @@ use crate::ast::symbolic_exists_moves::{
 ///
 pub fn compose_moves(
     e: &Vec<FixEq>,
-    s: &Vec<SymbolicExistsMove>,
+    s: &SymbolicExistsMoves,
     basis: &[String],
 ) -> Vec<SymbolicExistsMoveComposed> {
     e.iter()
@@ -22,15 +22,15 @@ pub fn compose_moves(
         .flat_map(|(i, _)| {
             compose_move_eq(e, i, s, basis)
                 .map(
-                    |SymbolicExistsMove {
+                    |SymbolicExistsMoveComposed {
                          formula,
                          func_name,
-                         basis_elem: base_elem,
+                         basis_elem,
                      }| {
                         SymbolicExistsMoveComposed {
                             formula: simplify::simplify(formula),
-                            func_name: func_name.parse().unwrap(),
-                            basis_elem: base_elem,
+                            func_name,
+                            basis_elem,
                         }
                     },
                 )
@@ -45,24 +45,21 @@ pub fn compose_moves(
 fn compose_move_eq<'a>(
     system: &'a Vec<FixEq>,
     i: usize,
-    s: &'a Vec<SymbolicExistsMove>,
+    s: &'a SymbolicExistsMoves,
     basis: &'a [String],
-) -> impl Iterator<Item = SymbolicExistsMove> + 'a {
-    basis.iter().map(move |b| SymbolicExistsMove {
+) -> impl Iterator<Item = SymbolicExistsMoveComposed> + 'a {
+    basis.iter().map(move |b| SymbolicExistsMoveComposed {
         formula: compose_move_base(system, b, &system[i].exp, s),
-        func_name: (i + 1).to_string(),
+        func_name: i + 1,
         basis_elem: b.clone(),
     })
 }
 
 #[inline]
-fn projection(f: &[FixEq], var: &String) -> usize {
+fn projection(f: &[FixEq], curr_var: &String) -> usize {
     f.iter()
-        .enumerate()
-        .map(|(i, x)| (x.var.clone(), i + 1))
-        .find(|(x, _)| x == var)
-        .unwrap()
-        .1
+    .position(|FixEq { var, .. }| var == curr_var)
+    .unwrap() + 1
 }
 
 /// Output: the composed move for an expression of the system of fixpoint
@@ -72,7 +69,7 @@ fn compose_move_base(
     system: &Vec<FixEq>,
     basis_elem: &String,
     sub_exp: &ExpFixEq,
-    s: &Vec<SymbolicExistsMove>,
+    s: &SymbolicExistsMoves,
 ) -> LogicFormula {
     match sub_exp {
         i @ ExpFixEq::And(_, _) => LogicFormula::Conj(vec![
@@ -104,16 +101,9 @@ fn compose_move_base(
             ),
         ]),
 
-        i @ ExpFixEq::Operator(op, _) => s
-            .iter()
-            .find(|SymbolicExistsMove { func_name, basis_elem: b, .. }| {
-                func_name == op && b == basis_elem
-            })
-            .map(|SymbolicExistsMove { formula, .. }| {
-                subst(system, i, s, formula)
-            })
-            .unwrap()
-            .to_owned(),
+        i @ ExpFixEq::Operator(op, _) => {
+            subst(system, i, s, s.get_formula(basis_elem, op))
+        }
 
         ExpFixEq::Id(var) => {
             LogicFormula::BasisElem(basis_elem.clone(), projection(system, var))
@@ -128,7 +118,7 @@ fn compose_move_base(
 fn subst(
     f: &Vec<FixEq>,
     sub_exp: &ExpFixEq,
-    moves: &Vec<SymbolicExistsMove>,
+    moves: &SymbolicExistsMoves,
     curr_formula: &LogicFormula,
 ) -> LogicFormula {
     match curr_formula {
@@ -155,10 +145,12 @@ fn subst(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
     use crate::ast::fixpoint_system::{ExpFixEq, FixEq, FixType};
     use crate::ast::symbolic_exists_moves::{
-        LogicFormula, SymbolicExistsMove, SymbolicExistsMoveComposed,
+        LogicFormula, SymbolicExistsMoveComposed, SymbolicExistsMoves,
     };
 
     #[test]
@@ -251,48 +243,31 @@ mod tests {
             .map(|x| x.to_string())
             .collect::<Vec<_>>();
 
-        let moves = vec![
-            SymbolicExistsMove {
-                formula: formula_box_b(vec!["{a}", "{b}", "{c}"], 1),
-                func_name: "box".to_string(),
-                basis_elem: "{a}".to_string(),
-            },
-            SymbolicExistsMove {
-                formula: formula_box_b(vec!["{c}", "{d}"], 1),
-                func_name: "box".to_string(),
-                basis_elem: "{b}".to_string(),
-            },
-            SymbolicExistsMove {
-                formula: formula_box_b(vec!["{c}"], 1),
-                func_name: "box".to_string(),
-                basis_elem: "{c}".to_string(),
-            },
-            SymbolicExistsMove {
-                formula: formula_box_b(vec!["{d}"], 1),
-                func_name: "box".to_string(),
-                basis_elem: "{d}".to_string(),
-            },
-            SymbolicExistsMove {
-                formula: formula_diamond_b(vec!["{a}", "{b}", "{c}"], 1),
-                func_name: "diamond".to_string(),
-                basis_elem: "{a}".to_string(),
-            },
-            SymbolicExistsMove {
-                formula: formula_diamond_b(vec!["{c}", "{d}"], 1),
-                func_name: "diamond".to_string(),
-                basis_elem: "{b}".to_string(),
-            },
-            SymbolicExistsMove {
-                formula: formula_diamond_b(vec!["{c}"], 1),
-                func_name: "diamond".to_string(),
-                basis_elem: "{c}".to_string(),
-            },
-            SymbolicExistsMove {
-                formula: formula_diamond_b(vec!["{d}"], 1),
-                func_name: "diamond".to_string(),
-                basis_elem: "{d}".to_string(),
-            },
-        ];
+        let moves = SymbolicExistsMoves {
+            basis_map: vec![
+                "{a}".to_string(),
+                "{b}".to_string(),
+                "{c}".to_string(),
+                "{d}".to_string(),
+            ]
+            .into_iter()
+            .enumerate()
+            .map(|(i, x)| (x, i))
+            .collect::<HashMap<_, _>>(),
+            fun_map: vec![("box".to_string(), 0), ("diamond".to_string(), 1)]
+                .into_iter()
+                .collect::<HashMap<_, _>>(),
+            formulas: vec![
+                formula_box_b(vec!["{a}", "{b}", "{c}"], 1),
+                formula_box_b(vec!["{c}", "{d}"], 1),
+                formula_box_b(vec!["{c}"], 1),
+                formula_box_b(vec!["{d}"], 1),
+                formula_diamond_b(vec!["{a}", "{b}", "{c}"], 1),
+                formula_diamond_b(vec!["{c}", "{d}"], 1),
+                formula_diamond_b(vec!["{c}"], 1),
+                formula_diamond_b(vec!["{d}"], 1),
+            ],
+        };
 
         let formula_composed_and =
             |b: &str, bs: Vec<&str>, proj_1: usize, proj_2: usize| {
@@ -385,18 +360,15 @@ mod tests {
             LogicFormula::BasisElem("{e}".to_string(), 1),
         ]);
 
-        let moves = vec![
-            SymbolicExistsMove {
-                formula: formula_p_b,
-                func_name: "p".to_string(),
-                basis_elem: "{b}".to_string(),
-            },
-            SymbolicExistsMove {
-                formula: formula_box_b,
-                func_name: "box".to_string(),
-                basis_elem: "{b}".to_string(),
-            },
-        ];
+        let moves = SymbolicExistsMoves {
+            basis_map: vec![("{b}".to_string(), 0)]
+                .into_iter()
+                .collect::<HashMap<_, _>>(),
+            fun_map: vec![("p".to_string(), 0), ("box".to_string(), 1)]
+                .into_iter()
+                .collect::<HashMap<_, _>>(),
+            formulas: vec![formula_p_b, formula_box_b],
+        };
 
         let fix_eq = vec![
             FixEq {

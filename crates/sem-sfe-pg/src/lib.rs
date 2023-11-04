@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use pg::PG;
 use sem_sfe_algorithm::{
     algorithm::{EvePos, LocalAlgorithm, Player, Position},
+    ast::symbolic_exists_moves::SymbolicExistsMoves,
     moves_compositor::compose_moves,
     normalizer::normalize_system,
 };
@@ -106,8 +107,17 @@ impl SpecOutput for ParityGameSpec {
         } else {
             (fix_system, HashMap::new())
         };
-        let composed_system =
-            compose_moves::compose_moves(&fix_system.0, &vec![], &basis);
+        let composed_system = compose_moves::compose_moves(
+            &fix_system.0,
+            &SymbolicExistsMoves {
+                basis_map: vec![("true".to_owned(), 0)]
+                    .into_iter()
+                    .collect::<HashMap<_, _>>(),
+                fun_map: HashMap::default(),
+                formulas: Vec::default(),
+            },
+            &basis,
+        );
         let preproc_duration = start.elapsed();
 
         Ok(PreProcOutput {

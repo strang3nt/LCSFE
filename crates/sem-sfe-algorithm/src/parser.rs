@@ -29,7 +29,7 @@ impl fmt::Display for ParserError {
 }
 
 use crate::ast::fixpoint_system::FixEq;
-use crate::ast::symbolic_exists_moves::SymbolicExistsMove;
+use crate::ast::symbolic_exists_moves::SymbolicExistsMoves;
 use chumsky::prelude::*;
 
 pub fn parse_basis(src: String) -> Result<Vec<String>, Vec<ParserError>> {
@@ -40,7 +40,7 @@ pub fn parse_symbolic_system(
     arity: &[(String, usize)],
     basis: &[String],
     src: String,
-) -> Result<Vec<SymbolicExistsMove>, ParserError> {
+) -> Result<SymbolicExistsMoves, ParserError> {
     moves_parser::symbolic_moves_parser(arity, basis).parse(src).map_err(
         |errs| {
             ParserError::new(
