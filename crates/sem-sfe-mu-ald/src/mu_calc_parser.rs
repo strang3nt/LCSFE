@@ -332,6 +332,7 @@ fn get_fix_system(
 pub fn mu_calc_parser(
     labels: &[String],
 ) -> impl Parser<char, MuCalc, Error = Simple<char>> {
+
     let expr = recursive(|expr| {
         let var = text::ident().map(MuCalc::Var).padded();
 
@@ -397,5 +398,5 @@ pub fn mu_calc_parser(
         
     });
 
-    expr
+    expr.then_ignore(end())
 }

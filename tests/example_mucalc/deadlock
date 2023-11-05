@@ -1,1 +1,1 @@
-nu x. <true>tt && [true]x
+mu x. <true>tt && [true]x
