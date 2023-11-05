@@ -48,17 +48,36 @@ The following EBNF grammar describes a $\mu$-calculus formula.
 \grammarindent1.3in
 \begin{grammar}
 
-<Label> ::= <Id> | `!' <Id> | `true'
+<Atom> ::= `tt' | `ff' | `(' <MuCalc> `)'
+        | <Id>
 
-<Atom> ::= `tt' | `ff' | `(' <Disjunction> `)'
-\alt `<' <Label> `>' <Disjunction>
-\alt `[' <Label> `]' <Disjunction>
-\alt `mu' <Id> `.' <Disjunction>
-\alt `nu' <Id> `.' <Disjunction>
+<ModalOp> ::= `<' <Label> `>' <Atom>
+        | `[' <Label> `]' <Atom>
+        | <Atom>
 
-<Conjunction> ::= <Atom> (`&&' <Atom>)*
+<Conjunction> ::= <ModalOp> (`&&' <ModalOp>)*
 
 <Disjuction>  ::= <Conjunction> (`||' <Conjunction>)*
 
+<Fix> ::= | `mu' <Id> `.' <Disjunction>
+         | `nu' <Id> `.' <Disjunction>
+
+<MuCalc> ::= <Fix> | <Disjunction>
+
+<Label> ::= `true' | <Id>
+
 <Id> ::= ( a C-style identifier )
+
 \end{grammar}
+
+Morover, we designed this grammar to respect some standard conventions:
+the modal operators $\square$ and $\lozenge$ binds stronger than $\vee, \wedge$,
+and the fixpoint operators, capture everything after the `.' character.
+
+The consequence is that a formula $\mu x( (\square x) \vee\nu y(\lozenge y \wedge ff))$ can be
+written as $\mu x.\square x\vee\nu y.\lozenge y\wedge ff$, minimizing the use of
+parenthesis.
+Whenever we wish to add to a modal operator anything different from the syntactic
+categories $tt$, $ff$ or $x\in PVar$, parenthesis must be used, this is due to the
+inherent limitations of the type of parser we used. This is expressed
+by the rule `<Atom>`.
