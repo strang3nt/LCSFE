@@ -1,14 +1,13 @@
-use std::{collections::HashMap, io::BufReader, time::Instant};
+use std::{io::BufReader, time::Instant};
 
 use clap::{Parser, Subcommand};
 use sem_sfe_algorithm::{
     algorithm::{EvePos, Position},
     normalizer::normalize_system,
 };
-use sem_sfe_common::{
-    InputFlags, PreProcOutput, SpecOutput, VerificationOutput,
-};
+use sem_sfe_common::{InputFlags, PreProcOutput, SpecOutput, VerificationOutput};
 use sem_sfe_pg::ParityGameSpec;
+use rustc_hash::FxHashMap as HashMap;
 
 #[derive(Debug, Parser)]
 #[command(about = "A local model checker which leverages parity games and symbolic exists-moves", long_about = None)]
@@ -58,11 +57,7 @@ enum Commands {
         node: String,
     },
     #[command(arg_required_else_help = true)]
-    MuAld {
-        lts_ald: std::path::PathBuf,
-        fix_system: std::path::PathBuf,
-        state: String,
-    },
+    MuAld { lts_ald: std::path::PathBuf, fix_system: std::path::PathBuf, state: String },
 }
 
 fn main() {
@@ -85,14 +80,10 @@ fn main() {
             let basis_src = std::fs::read_to_string(basis);
             let moves_src = std::fs::read_to_string(moves_system);
 
-            let arity =
-                sem_sfe_algorithm::parse::parse_fun_arity(arity_src.unwrap())
+            let arity = sem_sfe_algorithm::parse::parse_fun_arity(arity_src.unwrap()).unwrap();
+            let fix_system =
+                sem_sfe_algorithm::parse::parse_fixpoint_system(&arity, fix_system_src.unwrap())
                     .unwrap();
-            let fix_system = sem_sfe_algorithm::parse::parse_fixpoint_system(
-                &arity,
-                fix_system_src.unwrap(),
-            )
-            .unwrap();
 
             let var_name = fix_system
                 .iter()
@@ -101,24 +92,20 @@ fn main() {
                 .map(|(_, x)| x.var.to_owned())
                 .unwrap();
 
-            let basis =
-                sem_sfe_algorithm::parse::parse_basis(basis_src.unwrap())
+            let basis = sem_sfe_algorithm::parse::parse_basis(basis_src.unwrap()).unwrap();
+            let moves_system =
+                sem_sfe_algorithm::parse::parse_symbolic_system(&arity, &basis, moves_src.unwrap())
                     .unwrap();
-            let moves_system = sem_sfe_algorithm::parse::parse_symbolic_system(
-                &arity,
-                &basis,
-                moves_src.unwrap(),
-            )
-            .unwrap();
 
             let start = Instant::now();
 
-            let fix_system = if normalize {
-                normalize_system(fix_system)
-            } else {
-                (fix_system, HashMap::new())
-            };
-            let composed_system = sem_sfe_algorithm::moves_compositor::compose_moves::compose_moves(&fix_system.0, &moves_system, &basis);
+            let fix_system =
+                if normalize { normalize_system(fix_system) } else { (fix_system, HashMap::default()) };
+            let composed_system = sem_sfe_algorithm::moves_compositor::compose_moves::compose_moves(
+                &fix_system.0,
+                &moves_system,
+                &basis,
+            );
             let preproc_time = start.elapsed();
 
             let pos = Position::Eve(EvePos {
@@ -129,26 +116,16 @@ fn main() {
                         .iter()
                         .enumerate()
                         .find_map(|(i, fix_eq)| {
-                            if fix_system.1.get(&var_name).unwrap_or_else(
-                                || {
-                                    panic!(
-                                        "Cannot find variable with index {}",
-                                        position
-                                    )
-                                },
-                            ) == &fix_eq.var
+                            if fix_system.1.get(&var_name).unwrap_or_else(|| {
+                                panic!("Cannot find variable with index {}", position)
+                            }) == &fix_eq.var
                             {
                                 Some(i + 1)
                             } else {
                                 None
                             }
                         })
-                        .unwrap_or_else(|| {
-                            panic!(
-                                "Cannot find variable with index {}",
-                                position
-                            )
-                        })
+                        .unwrap_or_else(|| panic!("Cannot find variable with index {}", position))
                 } else {
                     position
                 },
@@ -187,9 +164,7 @@ fn main() {
 
         Commands::Pg { game_path, node } => {
             let p = ParityGameSpec::new(
-                &mut BufReader::new(
-                    std::fs::File::open(game_path.as_path()).unwrap(),
-                ),
+                &mut BufReader::new(std::fs::File::open(game_path.as_path()).unwrap()),
                 node,
             );
 
@@ -197,12 +172,8 @@ fn main() {
         }
         Commands::MuAld { lts_ald, fix_system, state } => {
             let mu_ald = sem_sfe_mu_ald::MuAld::new(
-                &mut BufReader::new(
-                    std::fs::File::open(lts_ald.as_path()).unwrap(),
-                ),
-                &mut BufReader::new(
-                    std::fs::File::open(fix_system.as_path()).unwrap(),
-                ),
+                &mut BufReader::new(std::fs::File::open(lts_ald.as_path()).unwrap()),
+                &mut BufReader::new(std::fs::File::open(fix_system.as_path()).unwrap()),
                 state,
             );
 
@@ -211,11 +182,7 @@ fn main() {
     };
 }
 
-fn print_results(
-    results: impl SpecOutput,
-    explain: bool,
-    input_flags: InputFlags,
-) {
+fn print_results(results: impl SpecOutput, explain: bool, input_flags: InputFlags) {
     let preproc = results.pre_proc(&input_flags).expect("Preprocessing failed");
     if explain {
         preproc.print_explain();
@@ -223,8 +190,6 @@ fn print_results(
         println!("{}", preproc);
     }
 
-    let result = results
-        .verify(&input_flags, &preproc)
-        .expect("Something unexpected happened");
+    let result = results.verify(&input_flags, &preproc).expect("Something unexpected happened");
     println!("{}", result);
 }

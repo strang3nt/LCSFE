@@ -45,10 +45,7 @@ impl fmt::Display for ExpFixEq {
             }
             ExpFixEq::Or(l, r) => format!("{} or {}", sub_arg(l), sub_arg(r)),
             ExpFixEq::Operator(op, args) => {
-                let args = args
-                    .iter()
-                    .map(|x| format!("{}", x))
-                    .collect::<Vec<String>>();
+                let args = args.iter().map(|x| format!("{}", x)).collect::<Vec<String>>();
                 format!("{}({})", op.to_owned(), args.join(", "))
             }
             ExpFixEq::Id(s) => s.to_owned(),

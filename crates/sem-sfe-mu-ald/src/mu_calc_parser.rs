@@ -1,4 +1,9 @@
-use std::{collections::{HashMap, HashSet}, fmt::Display, io::Error};
+use std::{
+    fmt::Display,
+    io::Error,
+};
+
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 use chumsky::prelude::*;
 use sem_sfe_algorithm::ast::{
@@ -52,19 +57,14 @@ fn instantiate_diamond(
                 Act::True => Some(node),
                 Act::NotLabel(x) if x != &lts.labels[*l] => Some(node),
                 _ => None,
-            }).peekable();
+            })
+            .peekable();
         if nodes.peek().is_none() {
-            formulas[
-                fun_map.get(&format!("diamond_{}", act)).unwrap()
-                * basis_map.len()
-                + basis_map.get(&basis_elem.to_string()).unwrap()] =
-                LogicFormula::True;
+            formulas[fun_map.get(&format!("diamond_{}", act)).unwrap() * basis_map.len()
+                + basis_map.get(&basis_elem.to_string()).unwrap()] = LogicFormula::True;
         } else {
-            formulas[
-                fun_map.get(&format!("diamond_{}", act)).unwrap()
-                * basis_map.len()
-                + basis_map.get(&basis_elem.to_string()).unwrap()] =
-            LogicFormula::Disj(
+            formulas[fun_map.get(&format!("diamond_{}", act)).unwrap() * basis_map.len()
+                + basis_map.get(&basis_elem.to_string()).unwrap()] = LogicFormula::Disj(
                 nodes
                     .enumerate()
                     .map(|(i, n)| LogicFormula::BasisElem(n.to_string(), i + 1))
@@ -89,26 +89,19 @@ fn instantiate_box(
                 Act::True => Some(node),
                 Act::NotLabel(x) if x != &lts.labels[*l] => Some(node),
                 _ => None,
-            }).peekable();
+            })
+            .peekable();
         if nodes.peek().is_none() {
-            formulas[
-                fun_map.get(&format!("box_{}", act)).unwrap()
-                * basis_map.len()
-                + basis_map.get(&basis_elem.to_string()).unwrap()] =
-                LogicFormula::False;
+            formulas[fun_map.get(&format!("box_{}", act)).unwrap() * basis_map.len()
+                + basis_map.get(&basis_elem.to_string()).unwrap()] = LogicFormula::False;
         } else {
-            formulas[
-                fun_map.get(&format!("box_{}", act)).unwrap()
-                * basis_map.len()
-                + basis_map.get(&basis_elem.to_string()).unwrap()] =
-                LogicFormula::Conj(
-                    nodes
-                        .enumerate()
-                        .map(|(i, n)| {
-                            LogicFormula::BasisElem(n.to_string(), i + 1)
-                        })
-                        .collect::<Vec<_>>(),
-                );
+            formulas[fun_map.get(&format!("box_{}", act)).unwrap() * basis_map.len()
+                + basis_map.get(&basis_elem.to_string()).unwrap()] = LogicFormula::Conj(
+                nodes
+                    .enumerate()
+                    .map(|(i, n)| LogicFormula::BasisElem(n.to_string(), i + 1))
+                    .collect::<Vec<_>>(),
+            );
         }
     })
 }
@@ -117,7 +110,6 @@ pub fn mucalc_to_fix_system(
     formula: &MuCalc,
     lts: &Lts,
 ) -> Result<(Vec<FixEq>, SymbolicExistsMoves), Error> {
-    
     match &formula {
         MuCalc::Eta(_, _, _) => {
             let (var_counter, foos) = preproc_formula(formula);
@@ -160,12 +152,18 @@ pub fn mucalc_to_fix_system(
 /// The goal is to know the shape of the formula, in order to build the fixpoint
 /// system and to build the SymbolicExistsMoves struct, in a way that it is as
 /// small as possible.
-fn preproc_formula(
-    formula: &MuCalc,
-) -> (u32, HashSet<String>) {
+fn preproc_formula(formula: &MuCalc) -> (u32, HashSet<String>) {
     match formula {
-        MuCalc::True => {let mut foos = HashSet::default(); foos.insert("tt".to_owned()); (0, foos)},
-        MuCalc::False => {let mut foos = HashSet::default(); foos.insert("ff".to_owned()); (0, foos)},
+        MuCalc::True => {
+            let mut foos = HashSet::default();
+            foos.insert("tt".to_owned());
+            (0, foos)
+        }
+        MuCalc::False => {
+            let mut foos = HashSet::default();
+            foos.insert("ff".to_owned());
+            (0, foos)
+        }
         MuCalc::Var(_) => (0, HashSet::default()),
         MuCalc::Eta(_, _, e) => {
             let (i, foos) = preproc_formula(e);
@@ -204,101 +202,53 @@ fn get_fix_system(
             let x_i = format!("x_{}", var_counter);
             var_counter -= 1;
             var_map.insert(x.to_string(), x_i.clone());
-            let (exp, mut system) = get_fix_system(
-                e,
-                lts,
-                basis_map,
-                fun_map,
-                formulas,
-                var_counter,
-                var_map,
-            );
-            system.push(FixEq {
-                var: x_i.clone(),
-                fix_ty: fix_ty.clone(),
-                exp,
-            });
+            let (exp, mut system) =
+                get_fix_system(e, lts, basis_map, fun_map, formulas, var_counter, var_map);
+            system.push(FixEq { var: x_i.clone(), fix_ty: fix_ty.clone(), exp });
             (ExpFixEq::Id(x_i), system)
         }
         MuCalc::Diamond(a, e) => {
-            let (exp, system) = get_fix_system(
-                e,
-                lts,
-                basis_map,
-                fun_map,
-                formulas,
-                var_counter,
-                var_map,
-            );
+            let (exp, system) =
+                get_fix_system(e, lts, basis_map, fun_map, formulas, var_counter, var_map);
             instantiate_diamond(lts, a, formulas, basis_map, fun_map);
             (ExpFixEq::Operator(format!("diamond_{}", a), vec![exp]), system)
         }
         MuCalc::Box(a, e) => {
-            let (exp, system) = get_fix_system(
-                e,
-                lts,
-                basis_map,
-                fun_map,
-                formulas,
-                var_counter,
-                var_map,
-            );
+            let (exp, system) =
+                get_fix_system(e, lts, basis_map, fun_map, formulas, var_counter, var_map);
 
             instantiate_box(lts, a, formulas, basis_map, fun_map);
             (ExpFixEq::Operator(format!("box_{}", a), vec![exp]), system)
         }
         MuCalc::And(l, r) => {
-            let (lexp, mut lsystem) = get_fix_system(
-                l,
-                lts,
-                basis_map,
-                fun_map,
-                formulas,
-                var_counter,
-                var_map,
-            );
-            let (rexp, rsystem) = get_fix_system(
-                r,
-                lts,
-                basis_map,
-                fun_map,
-                formulas,
-                var_counter,
-                var_map,
-            );
+            let (lexp, mut lsystem) =
+                get_fix_system(l, lts, basis_map, fun_map, formulas, var_counter, var_map);
+            let (rexp, rsystem) =
+                get_fix_system(r, lts, basis_map, fun_map, formulas, var_counter, var_map);
             lsystem.extend(rsystem);
             (ExpFixEq::And(Box::new(lexp), Box::new(rexp)), lsystem)
         }
         MuCalc::Or(l, r) => {
-            let (lexp, mut lsystem) = get_fix_system(
-                l,
-                lts,
-                basis_map,
-                fun_map,
-                formulas,
-                var_counter,
-                var_map,
-            );
-            let (rexp, rsystem) = get_fix_system(
-                r,
-                lts,
-                basis_map,
-                fun_map,
-                formulas,
-                var_counter,
-                var_map,
-            );
+            let (lexp, mut lsystem) =
+                get_fix_system(l, lts, basis_map, fun_map, formulas, var_counter, var_map);
+            let (rexp, rsystem) =
+                get_fix_system(r, lts, basis_map, fun_map, formulas, var_counter, var_map);
             lsystem.extend(rsystem);
             (ExpFixEq::Or(Box::new(lexp), Box::new(rexp)), lsystem)
         }
-        MuCalc::Var(x) => {
-            (ExpFixEq::Id(var_map.get(x).cloned().unwrap_or_else(|| panic!("Error: variable {} was not declared", x))), vec![])
-        }
+        MuCalc::Var(x) => (
+            ExpFixEq::Id(
+                var_map
+                    .get(x)
+                    .cloned()
+                    .unwrap_or_else(|| panic!("Error: variable {} was not declared", x)),
+            ),
+            vec![],
+        ),
 
         MuCalc::True => {
             lts.adj_list.iter().for_each(|x| {
-                formulas[
-                    fun_map.get("tt").unwrap() * basis_map.len()
+                formulas[fun_map.get("tt").unwrap() * basis_map.len()
                     + basis_map.get(&x.0.to_string()).unwrap()] = LogicFormula::True;
             });
 
@@ -307,7 +257,7 @@ fn get_fix_system(
         MuCalc::False => {
             lts.adj_list.iter().for_each(|x| {
                 formulas[fun_map.get("ff").unwrap() * basis_map.len()
-                + basis_map.get(&x.0.to_string()).unwrap()] = LogicFormula::False;
+                    + basis_map.get(&x.0.to_string()).unwrap()] = LogicFormula::False;
             });
             (ExpFixEq::Operator("ff".to_string(), vec![]), vec![])
         }
@@ -329,25 +279,15 @@ fn get_fix_system(
 /// <Label> ::= `true' | <Id>
 /// <Id> ::= ( a C-style identifier )
 ///
-pub fn mu_calc_parser(
-    labels: &[String],
-) -> impl Parser<char, MuCalc, Error = Simple<char>> {
-
+pub fn mu_calc_parser(labels: &[String]) -> impl Parser<char, MuCalc, Error = Simple<char>> {
     let expr = recursive(|expr| {
         let var = text::ident().map(MuCalc::Var).padded();
 
-        let mut labels_parser = labels
-            .iter()
-            .map(|str| just(str.clone()).padded())
-            .collect::<Vec<_>>();
+        let mut labels_parser =
+            labels.iter().map(|str| just(str.clone()).padded()).collect::<Vec<_>>();
         labels_parser.push(just("true".to_string()).padded());
-        let labels_parser = choice(labels_parser).map(|x| {
-            if x == "true" {
-                Act::True
-            } else {
-                Act::Label(x)
-            }
-        });
+        let labels_parser =
+            choice(labels_parser).map(|x| if x == "true" { Act::True } else { Act::Label(x) });
 
         let not_labels = labels
             .iter()
@@ -357,10 +297,7 @@ pub fn mu_calc_parser(
 
         let tt = text::keyword("tt").padded().map(|_| MuCalc::True);
         let ff = text::keyword("ff").padded().map(|_| MuCalc::False);
-        let atom = tt
-            .or(ff)
-            .or(expr.clone().delimited_by(just('('), just(')')))
-            .or(var).padded();
+        let atom = tt.or(ff).or(expr.clone().delimited_by(just('('), just(')'))).or(var).padded();
 
         let diamond = choice((labels_parser.clone(), not_labels.clone()))
             .delimited_by(just('<'), just('>'))
@@ -375,11 +312,13 @@ pub fn mu_calc_parser(
 
         let modalop = diamond.or(boxx).or(atom);
         let op = |c| just(c).padded();
-        let and = modalop.clone()
+        let and = modalop
+            .clone()
             .then(op("&&").to(MuCalc::And as fn(_, _) -> _).then(modalop).repeated())
             .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)));
 
-        let or = and.clone()
+        let or = and
+            .clone()
             .then(op("||").to(MuCalc::Or as fn(_, _) -> _).then(and).repeated())
             .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)));
 
@@ -393,9 +332,8 @@ pub fn mu_calc_parser(
             .then_ignore(just('.').padded())
             .then(or.clone())
             .map(|(x, e)| MuCalc::Eta(x, FixType::Max, Box::new(e)));
-        
+
         mu.or(nu).or(or).padded()
-        
     });
 
     expr.then_ignore(end())

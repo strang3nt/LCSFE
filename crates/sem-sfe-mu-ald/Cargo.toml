@@ -9,3 +9,4 @@ edition = "2021"
 sem-sfe-common =    { path = "../sem-sfe-common" }
 sem-sfe-algorithm = { path = "../sem-sfe-algorithm" }
 chumsky = "0.9.2"
+rustc-hash = "1.1.0"

@@ -14,15 +14,12 @@ pub fn pg_to_pbe(pg: &PG, p: Player) -> Vec<FixEq> {
             match acc {
                 id @ ExpFixEq::Id(_) if n.owner == p => ExpFixEq::Or(Box::new(id), Box::new(x_i)),
                 id @ ExpFixEq::Id(_) => ExpFixEq::And(Box::new(id), Box::new(x_i)),
-                or @ ExpFixEq::Or(_, _) =>
-                    ExpFixEq::Or(Box::new(or), Box::new(x_i)),
-                and @ ExpFixEq::And(_, _) =>
-                    ExpFixEq::And(Box::new(and), Box::new(x_i)),
+                or @ ExpFixEq::Or(_, _) => ExpFixEq::Or(Box::new(or), Box::new(x_i)),
+                and @ ExpFixEq::And(_, _) => ExpFixEq::And(Box::new(and), Box::new(x_i)),
                 _ => panic!("Encountered a type {:#?} while building a fixpoint equation", acc),
             }
         });
         acc.push(FixEq { var: x, fix_ty, exp: right_hand });
         acc
-
     })
 }

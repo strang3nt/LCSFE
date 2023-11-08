@@ -2,8 +2,6 @@ mod parser;
 mod pg;
 mod pg_to_pbe;
 
-use std::collections::HashMap;
-
 use pg::PG;
 use sem_sfe_algorithm::{
     algorithm::{EvePos, LocalAlgorithm, Player, Position},
@@ -11,9 +9,9 @@ use sem_sfe_algorithm::{
     moves_compositor::compose_moves,
     normalizer::normalize_system,
 };
-use sem_sfe_common::{
-    InputFlags, PreProcOutput, SpecOutput, VerificationOutput,
-};
+use sem_sfe_common::{InputFlags, PreProcOutput, SpecOutput, VerificationOutput};
+
+use rustc_hash::FxHashMap as HashMap;
 
 pub struct ParityGameSpec {
     pg: PG,
@@ -22,19 +20,15 @@ pub struct ParityGameSpec {
 }
 
 impl ParityGameSpec {
-    pub fn new(
-        src: &mut std::io::BufReader<std::fs::File>,
-        node: String,
-    ) -> ParityGameSpec {
+    pub fn new(src: &mut std::io::BufReader<std::fs::File>, node: String) -> ParityGameSpec {
         let mut pg = parser::parse_pg(src).unwrap();
         pg.0.sort_by(|a, b| a.0.parity.partial_cmp(&b.0.parity).unwrap());
 
-        let position = pg
-            .0
-            .iter()
-            .enumerate()
-            .find_map(|(i, x)| if x.0.name == node { Some(i) } else { None })
-            .unwrap_or_else(|| panic!("Cannot find node with name {}", node));
+        let position =
+            pg.0.iter()
+                .enumerate()
+                .find_map(|(i, x)| if x.0.name == node { Some(i) } else { None })
+                .unwrap_or_else(|| panic!("Cannot find node with name {}", node));
 
         ParityGameSpec { pg, node, position }
     }
@@ -52,9 +46,7 @@ impl SpecOutput for ParityGameSpec {
                 .iter()
                 .enumerate()
                 .find_map(|(i, fix_eq)| {
-                    if pre_proc.var_map.get(&pre_proc.var).unwrap()
-                        == &fix_eq.var
-                    {
+                    if pre_proc.var_map.get(&pre_proc.var).unwrap() == &fix_eq.var {
                         Some(i + 1)
                     } else {
                         None
@@ -65,16 +57,11 @@ impl SpecOutput for ParityGameSpec {
             self.position + 1
         };
 
-        let algo = LocalAlgorithm {
-            fix_system: &pre_proc.fix_system,
-            symbolic_moves: &pre_proc.moves,
-        };
+        let algo =
+            LocalAlgorithm { fix_system: &pre_proc.fix_system, symbolic_moves: &pre_proc.moves };
 
         let start = std::time::Instant::now();
-        let winner = algo.local_check(Position::Eve(EvePos {
-            b: "true".to_string(),
-            i: index,
-        }));
+        let winner = algo.local_check(Position::Eve(EvePos { b: "true".to_string(), i: index }));
         let algo_duration = start.elapsed();
 
         let winner = match winner {
@@ -88,10 +75,7 @@ impl SpecOutput for ParityGameSpec {
         })
     }
 
-    fn pre_proc(
-        &self,
-        flags: &InputFlags,
-    ) -> Result<PreProcOutput, Box<dyn std::error::Error>> {
+    fn pre_proc(&self, flags: &InputFlags) -> Result<PreProcOutput, Box<dyn std::error::Error>> {
         let basis = vec!["true".to_string()];
 
         let start = std::time::Instant::now();
@@ -105,14 +89,12 @@ impl SpecOutput for ParityGameSpec {
         let fix_system = if flags.normalize {
             normalize_system(fix_system)
         } else {
-            (fix_system, HashMap::new())
+            (fix_system, HashMap::default())
         };
         let composed_system = compose_moves::compose_moves(
             &fix_system.0,
             &SymbolicExistsMoves {
-                basis_map: vec![("true".to_owned(), 0)]
-                    .into_iter()
-                    .collect::<HashMap<_, _>>(),
+                basis_map: vec![("true".to_owned(), 0)].into_iter().collect::<HashMap<_, _>>(),
                 fun_map: HashMap::default(),
                 formulas: Vec::default(),
             },

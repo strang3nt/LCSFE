@@ -21,19 +21,13 @@ pub fn compose_moves(
         .enumerate()
         .flat_map(|(i, _)| {
             compose_move_eq(e, i, s, basis)
-                .map(
-                    |SymbolicExistsMoveComposed {
-                         formula,
-                         func_name,
-                         basis_elem,
-                     }| {
-                        SymbolicExistsMoveComposed {
-                            formula: simplify::simplify(formula),
-                            func_name,
-                            basis_elem,
-                        }
-                    },
-                )
+                .map(|SymbolicExistsMoveComposed { formula, func_name, basis_elem }| {
+                    SymbolicExistsMoveComposed {
+                        formula: simplify::simplify(formula),
+                        func_name,
+                        basis_elem,
+                    }
+                })
                 .collect::<Vec<_>>()
         })
         .collect()
@@ -57,9 +51,7 @@ fn compose_move_eq<'a>(
 
 #[inline]
 fn projection(f: &[FixEq], curr_var: &String) -> usize {
-    f.iter()
-    .position(|FixEq { var, .. }| var == curr_var)
-    .unwrap() + 1
+    f.iter().position(|FixEq { var, .. }| var == curr_var).unwrap() + 1
 }
 
 /// Output: the composed move for an expression of the system of fixpoint
@@ -73,41 +65,17 @@ fn compose_move_base(
 ) -> LogicFormula {
     match sub_exp {
         i @ ExpFixEq::And(_, _) => LogicFormula::Conj(vec![
-            subst(
-                system,
-                i,
-                s,
-                &LogicFormula::BasisElem(basis_elem.to_owned(), 1),
-            ),
-            subst(
-                system,
-                i,
-                s,
-                &LogicFormula::BasisElem(basis_elem.to_owned(), 2),
-            ),
+            subst(system, i, s, &LogicFormula::BasisElem(basis_elem.to_owned(), 1)),
+            subst(system, i, s, &LogicFormula::BasisElem(basis_elem.to_owned(), 2)),
         ]),
         i @ ExpFixEq::Or(_, _) => LogicFormula::Disj(vec![
-            subst(
-                system,
-                i,
-                s,
-                &LogicFormula::BasisElem(basis_elem.to_owned(), 1),
-            ),
-            subst(
-                system,
-                i,
-                s,
-                &LogicFormula::BasisElem(basis_elem.to_owned(), 2),
-            ),
+            subst(system, i, s, &LogicFormula::BasisElem(basis_elem.to_owned(), 1)),
+            subst(system, i, s, &LogicFormula::BasisElem(basis_elem.to_owned(), 2)),
         ]),
 
-        i @ ExpFixEq::Operator(op, _) => {
-            subst(system, i, s, s.get_formula(basis_elem, op))
-        }
+        i @ ExpFixEq::Operator(op, _) => subst(system, i, s, s.get_formula(basis_elem, op)),
 
-        ExpFixEq::Id(var) => {
-            LogicFormula::BasisElem(basis_elem.clone(), projection(system, var))
-        }
+        ExpFixEq::Id(var) => LogicFormula::BasisElem(basis_elem.clone(), projection(system, var)),
     }
 }
 
@@ -133,19 +101,19 @@ fn subst(
 
             compose_move_base(f, b, &args[i - 1], moves)
         }
-        LogicFormula::Conj(x) => LogicFormula::Conj(
-            x.iter().map(|a| subst(f, sub_exp, moves, a)).collect(),
-        ),
-        LogicFormula::Disj(x) => LogicFormula::Disj(
-            x.iter().map(|a| subst(f, sub_exp, moves, a)).collect(),
-        ),
+        LogicFormula::Conj(x) => {
+            LogicFormula::Conj(x.iter().map(|a| subst(f, sub_exp, moves, a)).collect())
+        }
+        LogicFormula::Disj(x) => {
+            LogicFormula::Disj(x.iter().map(|a| subst(f, sub_exp, moves, a)).collect())
+        }
         _ => curr_formula.to_owned(),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use rustc_hash::FxHashMap as HashMap;
 
     use super::*;
     use crate::ast::fixpoint_system::{ExpFixEq, FixEq, FixType};
@@ -238,10 +206,8 @@ mod tests {
                 LogicFormula::BasisElem(bs[0].to_string(), proj)
             }
         };
-        let basis = vec!["{a}", "{b}", "{c}", "{d}"]
-            .into_iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<_>>();
+        let basis =
+            vec!["{a}", "{b}", "{c}", "{d}"].into_iter().map(|x| x.to_string()).collect::<Vec<_>>();
 
         let moves = SymbolicExistsMoves {
             basis_map: vec![
@@ -269,30 +235,23 @@ mod tests {
             ],
         };
 
-        let formula_composed_and =
-            |b: &str, bs: Vec<&str>, proj_1: usize, proj_2: usize| {
-                LogicFormula::Conj(vec![
-                    LogicFormula::BasisElem(b.to_string(), proj_1),
-                    formula_diamond_b(bs, proj_2),
-                ])
-            };
+        let formula_composed_and = |b: &str, bs: Vec<&str>, proj_1: usize, proj_2: usize| {
+            LogicFormula::Conj(vec![
+                LogicFormula::BasisElem(b.to_string(), proj_1),
+                formula_diamond_b(bs, proj_2),
+            ])
+        };
 
-        let formula_composed_or =
-            |b: &str, bs: Vec<&str>, proj_1: usize, proj_2: usize| {
-                LogicFormula::Disj(vec![
-                    LogicFormula::BasisElem(b.to_string(), proj_1),
-                    formula_box_b(bs, proj_2),
-                ])
-            };
+        let formula_composed_or = |b: &str, bs: Vec<&str>, proj_1: usize, proj_2: usize| {
+            LogicFormula::Disj(vec![
+                LogicFormula::BasisElem(b.to_string(), proj_1),
+                formula_box_b(bs, proj_2),
+            ])
+        };
 
         let symbolic_composed_moves = vec![
             SymbolicExistsMoveComposed {
-                formula: formula_composed_or(
-                    "{a}",
-                    vec!["{a}", "{b}", "{c}"],
-                    2,
-                    1,
-                ),
+                formula: formula_composed_or("{a}", vec!["{a}", "{b}", "{c}"], 2, 1),
                 func_name: 1,
                 basis_elem: "{a}".to_string(),
             },
@@ -312,12 +271,7 @@ mod tests {
                 basis_elem: "{d}".to_string(),
             },
             SymbolicExistsMoveComposed {
-                formula: formula_composed_and(
-                    "{a}",
-                    vec!["{a}", "{b}", "{c}"],
-                    1,
-                    2,
-                ),
+                formula: formula_composed_and("{a}", vec!["{a}", "{b}", "{c}"], 1, 2),
                 func_name: 2,
                 basis_elem: "{a}".to_string(),
             },
@@ -348,10 +302,7 @@ mod tests {
     fn subst_basic_example() {
         let fix_eq_1 = ExpFixEq::And(
             Box::new(ExpFixEq::Operator("p".to_string(), vec![])),
-            Box::new(ExpFixEq::Operator(
-                "box".to_string(),
-                vec![ExpFixEq::Id("x_1".to_string())],
-            )),
+            Box::new(ExpFixEq::Operator("box".to_string(), vec![ExpFixEq::Id("x_1".to_string())])),
         );
 
         let formula_p_b = LogicFormula::True;
@@ -361,9 +312,7 @@ mod tests {
         ]);
 
         let moves = SymbolicExistsMoves {
-            basis_map: vec![("{b}".to_string(), 0)]
-                .into_iter()
-                .collect::<HashMap<_, _>>(),
+            basis_map: vec![("{b}".to_string(), 0)].into_iter().collect::<HashMap<_, _>>(),
             fun_map: vec![("p".to_string(), 0), ("box".to_string(), 1)]
                 .into_iter()
                 .collect::<HashMap<_, _>>(),
@@ -371,11 +320,7 @@ mod tests {
         };
 
         let fix_eq = vec![
-            FixEq {
-                var: "x_1".to_string(),
-                fix_ty: FixType::Max,
-                exp: fix_eq_1.clone(),
-            },
+            FixEq { var: "x_1".to_string(), fix_ty: FixType::Max, exp: fix_eq_1.clone() },
             //FixEq {var: "x_2".to_string(), fix_ty: FixType::Min, formula:}
         ];
 

@@ -30,13 +30,11 @@ pub fn ald_parser(src: &mut BufReader<File>) -> Result<Lts, Error> {
     let first_state = header[0];
     let nr_of_states: usize = header[2].try_into().unwrap();
     let mut labels: Vec<String> = vec![];
-    let adj_list = src.lines().try_fold(
-        HashMap::with_capacity(nr_of_states),
-        |mut acc, elem| match elem.map(|x| {
+    let adj_list = src.lines().try_fold(HashMap::with_capacity(nr_of_states), |mut acc, elem| {
+        match elem.map(|x| {
             let x_trim = x.trim_start_matches('(').trim_end_matches(')');
             let start = x_trim.splitn(2, ',').collect::<Vec<&str>>();
-            let label: Vec<&str> =
-                start[1].trim_start_matches('"').splitn(2, '"').collect();
+            let label: Vec<&str> = start[1].trim_start_matches('"').splitn(2, '"').collect();
             let end = label[1].trim_start_matches(',');
 
             vec![start[0].to_string(), label[0].to_string(), end.to_string()]
@@ -45,13 +43,12 @@ pub fn ald_parser(src: &mut BufReader<File>) -> Result<Lts, Error> {
                 let start_node: u32 = edge[0].parse().unwrap();
                 let label: String = edge[1].parse().unwrap();
                 let end_node: u32 = edge[2].parse().unwrap();
-                let position: usize =
-                    if let Some(i) = labels.iter().position(|x| x == &label) {
-                        i
-                    } else {
-                        labels.push(label.to_owned());
-                        labels.len() - 1
-                    };
+                let position: usize = if let Some(i) = labels.iter().position(|x| x == &label) {
+                    i
+                } else {
+                    labels.push(label.to_owned());
+                    labels.len() - 1
+                };
                 if acc.get(&start_node).is_some() {
                     acc.get_mut(&start_node);
                     Ok(acc)
@@ -61,8 +58,8 @@ pub fn ald_parser(src: &mut BufReader<File>) -> Result<Lts, Error> {
                 }
             }
             Err(e) => Err(e),
-        },
-    );
+        }
+    });
 
     assert!(adj_list.as_ref().unwrap().len() == nr_of_states);
     Ok(Lts { first_state, labels, adj_list: adj_list? })
