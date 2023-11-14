@@ -4,9 +4,9 @@ mod pg_to_pbe;
 
 use pg::PG;
 use sem_sfe_algorithm::{
-    algorithm::{EvePos, LocalAlgorithm, Player, Position},
-    ast::symbolic_exists_moves::SymbolicExistsMoves,
-    moves_compositor::compose_moves,
+    algorithm::{LocalAlgorithm, Player},
+    ast::symbolic_exists_moves::SymbolicExistsMoves as UncomposedMoves,
+    ast::symbolic_moves_dag::SymbolicExistsMoves,
     normalizer::normalize_system,
 };
 use sem_sfe_common::{InputFlags, PreProcOutput, SpecOutput, VerificationOutput};
@@ -61,7 +61,7 @@ impl SpecOutput for ParityGameSpec {
             LocalAlgorithm { fix_system: &pre_proc.fix_system, symbolic_moves: &pre_proc.moves };
 
         let start = std::time::Instant::now();
-        let winner = algo.local_check(Position::Eve(EvePos { b: "true".to_string(), i: index }));
+        let winner = algo.local_check("true".to_string(), index);
         let algo_duration = start.elapsed();
 
         let winner = match winner {
@@ -91,9 +91,9 @@ impl SpecOutput for ParityGameSpec {
         } else {
             (fix_system, HashMap::default())
         };
-        let composed_system = compose_moves::compose_moves(
+        let composed_system = SymbolicExistsMoves::new(
             &fix_system.0,
-            &SymbolicExistsMoves {
+            &UncomposedMoves {
                 basis_map: vec![("true".to_owned(), 0)].into_iter().collect::<HashMap<_, _>>(),
                 fun_map: HashMap::default(),
                 formulas: Vec::default(),

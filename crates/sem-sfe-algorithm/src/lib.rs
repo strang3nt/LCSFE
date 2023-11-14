@@ -1,4 +1,3 @@
-pub mod moves_compositor;
 mod parity_game;
 mod parser;
 

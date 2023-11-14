@@ -32,12 +32,12 @@ impl Position {
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 
 pub struct EvePos {
-    pub b: String,
+    pub b: usize,
     pub i: usize,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 
 pub struct AdamPos {
-    pub x: Vec<BTreeSet<String>>,
+    pub x: Vec<BTreeSet<usize>>,
 }

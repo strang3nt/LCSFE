@@ -1,12 +1,5 @@
 use rustc_hash::FxHashMap as HashMap;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct SymbolicExistsMoveComposed {
-    pub formula: LogicFormula,
-    pub func_name: usize,
-    pub basis_elem: String,
-}
-
 #[derive(Debug)]
 pub struct SymbolicExistsMoves {
     pub basis_map: HashMap<String, usize>,
@@ -43,11 +36,5 @@ impl std::fmt::Display for LogicFormula {
         };
 
         write!(f, "{}", formula)
-    }
-}
-
-impl std::fmt::Display for SymbolicExistsMoveComposed {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "phi({})({}) = {}", self.basis_elem, self.func_name, self.formula)
     }
 }

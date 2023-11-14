@@ -1,17 +1,17 @@
 mod ald_parser;
 mod mu_calc_parser;
 
-use std::{io::Read, time::Instant};
-use rustc_hash::FxHashMap as HashMap;
 use ald_parser::{ald_parser, Lts};
 use chumsky::Parser;
 use mu_calc_parser::MuCalc;
+use rustc_hash::FxHashMap as HashMap;
 use sem_sfe_algorithm::{
-    algorithm::{EvePos, LocalAlgorithm, Player},
-    moves_compositor::compose_moves::compose_moves,
+    algorithm::{LocalAlgorithm, Player},
+    ast::symbolic_moves_dag::SymbolicExistsMoves,
     normalizer::normalize_system,
 };
 use sem_sfe_common::{InputFlags, PreProcOutput, SpecOutput, VerificationOutput};
+use std::{io::Read, time::Instant};
 
 pub struct MuAld {
     lts: Lts,
@@ -42,7 +42,7 @@ impl SpecOutput for MuAld {
         } else {
             (fix_system, HashMap::default())
         };
-        let moves = compose_moves(
+        let moves = SymbolicExistsMoves::new(
             &fix_system,
             &moves,
             &self.lts.adj_list.iter().map(|x| x.0.to_string()).collect::<Vec<_>>(),
@@ -62,10 +62,7 @@ impl SpecOutput for MuAld {
 
         let start = Instant::now();
         let result =
-            local_algorithm.local_check(sem_sfe_algorithm::algorithm::Position::Eve(EvePos {
-                b: self.state.to_owned(),
-                i: local_algorithm.fix_system.len(),
-            }));
+            local_algorithm.local_check(self.state.to_owned(), local_algorithm.fix_system.len());
         let algorithm_time = start.elapsed();
 
         let result = match result {

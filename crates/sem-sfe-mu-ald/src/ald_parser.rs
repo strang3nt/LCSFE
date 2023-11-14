@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -30,7 +30,7 @@ pub fn ald_parser(src: &mut BufReader<File>) -> Result<Lts, Error> {
     let first_state = header[0];
     let nr_of_states: usize = header[2].try_into().unwrap();
     let mut labels: Vec<String> = vec![];
-    let adj_list = src.lines().try_fold(HashMap::with_capacity(nr_of_states), |mut acc, elem| {
+    let adj_list = src.lines().try_fold(HashMap::default(), |mut acc, elem| {
         match elem.map(|x| {
             let x_trim = x.trim_start_matches('(').trim_end_matches(')');
             let start = x_trim.splitn(2, ',').collect::<Vec<&str>>();

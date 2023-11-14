@@ -1,7 +1,4 @@
-use std::{
-    fmt::Display,
-    io::Error,
-};
+use std::{fmt::Display, io::Error};
 
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 

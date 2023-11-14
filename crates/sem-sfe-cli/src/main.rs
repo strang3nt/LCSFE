@@ -1,13 +1,10 @@
 use std::{io::BufReader, time::Instant};
 
 use clap::{Parser, Subcommand};
-use sem_sfe_algorithm::{
-    algorithm::{EvePos, Position},
-    normalizer::normalize_system,
-};
+use rustc_hash::FxHashMap as HashMap;
+use sem_sfe_algorithm::normalizer::normalize_system;
 use sem_sfe_common::{InputFlags, PreProcOutput, SpecOutput, VerificationOutput};
 use sem_sfe_pg::ParityGameSpec;
-use rustc_hash::FxHashMap as HashMap;
 
 #[derive(Debug, Parser)]
 #[command(about = "A local model checker which leverages parity games and symbolic exists-moves", long_about = None)]
@@ -99,18 +96,22 @@ fn main() {
 
             let start = Instant::now();
 
-            let fix_system =
-                if normalize { normalize_system(fix_system) } else { (fix_system, HashMap::default()) };
-            let composed_system = sem_sfe_algorithm::moves_compositor::compose_moves::compose_moves(
-                &fix_system.0,
-                &moves_system,
-                &basis,
-            );
+            let fix_system = if normalize {
+                normalize_system(fix_system)
+            } else {
+                (fix_system, HashMap::default())
+            };
+            let composed_system =
+                sem_sfe_algorithm::ast::symbolic_moves_dag::SymbolicExistsMoves::new(
+                    &fix_system.0,
+                    &moves_system,
+                    &basis,
+                );
             let preproc_time = start.elapsed();
 
-            let pos = Position::Eve(EvePos {
-                b: basis_element,
-                i: if normalize {
+            let pos = (
+                basis_element,
+                if normalize {
                     fix_system
                         .0
                         .iter()
@@ -129,7 +130,7 @@ fn main() {
                 } else {
                     position
                 },
-            });
+            );
 
             let preproc = PreProcOutput {
                 preproc_time,
@@ -151,7 +152,7 @@ fn main() {
             };
 
             let start = Instant::now();
-            let result = parity_game.local_check(pos);
+            let result = parity_game.local_check(pos.0, pos.1);
             let algo_time = start.elapsed();
 
             let result = VerificationOutput {
