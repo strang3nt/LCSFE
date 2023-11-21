@@ -158,7 +158,6 @@ impl<'a> LocalAlgorithm<'a> {
                     Self::forget(&opponent, after_not_valid, &mut decisions);
                     assumptions.get_mut_p(&opponent).remove(&play_data);
                 };
-
                 assumptions.get_mut_p(&p).remove(&play_data);
                 decisions.get_mut_p(&p).insert(play_data, decision_time);
                 self.backtrack(p, pl, assumptions, decisions)
@@ -269,8 +268,7 @@ impl<'a> LocalAlgorithm<'a> {
         pl: &Playlist,
     ) -> (Rc<Node<FormulaOperator>>, PositionCounterSet<Instant>) {
         let (fp, new_assumpt) = self.apply_decisions(f, k, decisions, last_move, pl);
-        let x = SymbolicExistsMoves::simplify(fp);
-        (x, new_assumpt)
+        (self.symbolic_moves.simplify(fp), new_assumpt)
     }
 
     fn apply_decisions(
@@ -285,16 +283,13 @@ impl<'a> LocalAlgorithm<'a> {
             Node { val: FormulaOperator::Atom(BasisElem { b, i }), .. } => {
                 if let Some(player) = self.contains(
                     decisions,
-                    &PlayData {
-                        pos: Position::Eve(EvePos { b: b.to_owned(), i: *i }),
-                        k: k.clone(),
-                    },
+                    &PlayData { pos: Position::Eve(EvePos { b: *b, i: *i }), k: k.clone() },
                 ) {
                     (
                         if Player::Eve == player {
-                            Rc::new(Node { val: FormulaOperator::And, children: vec![] })
+                            self.symbolic_moves.get_true_atom()
                         } else {
-                            Rc::new(Node { val: FormulaOperator::Or, children: vec![] })
+                            self.symbolic_moves.get_false_atom()
                         },
                         PositionCounterSet::new(),
                     )
@@ -307,7 +302,7 @@ impl<'a> LocalAlgorithm<'a> {
                 {
                     let mut new_assumpt = PositionCounterSet::new();
                     new_assumpt.get_mut_p(&Player::Eve).insert(play_data.clone(), Instant::now());
-                    (Rc::new(Node { val: FormulaOperator::And, children: vec![] }), new_assumpt)
+                    (self.symbolic_moves.get_true_atom(), new_assumpt)
                 } else if let Some((play_data, _)) =
                     pl.iter().find(|(PlayData { pos, k: kp }, _)| {
                         matches!(pos, Position::Eve(EvePos { b: bp, i: ip }) if bp == b
@@ -317,7 +312,7 @@ impl<'a> LocalAlgorithm<'a> {
                 {
                     let mut new_assumpt = PositionCounterSet::new();
                     new_assumpt.get_mut_p(&Player::Adam).insert(play_data.clone(), Instant::now());
-                    (Rc::new(Node { val: FormulaOperator::Or, children: vec![] }), new_assumpt)
+                    (self.symbolic_moves.get_false_atom(), new_assumpt)
                 } else if let Some((eve_pos, kp)) = last_move {
                     if &eve_pos.b == b && i == &eve_pos.i && self.counter_le_eve(&k, kp) {
                         let mut new_assumpt = PositionCounterSet::new();
@@ -331,7 +326,7 @@ impl<'a> LocalAlgorithm<'a> {
                             },
                             Instant::now(),
                         );
-                        (Rc::new(Node { val: FormulaOperator::Or, children: vec![] }), new_assumpt)
+                        (self.symbolic_moves.get_false_atom(), new_assumpt)
                     } else if &eve_pos.b == b && i == &eve_pos.i && self.counter_le_eve(kp, &k) {
                         let mut new_assumpt = PositionCounterSet::new();
                         new_assumpt.get_mut_p(&Player::Eve).insert(
@@ -344,7 +339,7 @@ impl<'a> LocalAlgorithm<'a> {
                             },
                             Instant::now(),
                         );
-                        (Rc::new(Node { val: FormulaOperator::And, children: vec![] }), new_assumpt)
+                        (self.symbolic_moves.get_true_atom(), new_assumpt)
                     } else {
                         (f.clone(), PositionCounterSet::new())
                     }

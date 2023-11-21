@@ -42,14 +42,21 @@ impl SpecOutput for MuAld {
         } else {
             (fix_system, HashMap::default())
         };
-        let moves = SymbolicExistsMoves::new(
+        let mut moves_composed = SymbolicExistsMoves::default();
+        moves_composed.compose(
             &fix_system,
             &moves,
             &self.lts.adj_list.iter().map(|x| x.0.to_string()).collect::<Vec<_>>(),
         );
         let preproc_time = start.elapsed();
 
-        Ok(PreProcOutput { moves, fix_system, var_map, var: self.state.to_owned(), preproc_time })
+        Ok(PreProcOutput {
+            moves: moves_composed,
+            fix_system,
+            var_map,
+            var: self.state.to_owned(),
+            preproc_time,
+        })
     }
 
     fn verify(

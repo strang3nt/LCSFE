@@ -91,7 +91,8 @@ impl SpecOutput for ParityGameSpec {
         } else {
             (fix_system, HashMap::default())
         };
-        let composed_system = SymbolicExistsMoves::new(
+        let mut composed_system = SymbolicExistsMoves::default();
+        composed_system.compose(
             &fix_system.0,
             &UncomposedMoves {
                 basis_map: vec![("true".to_owned(), 0)].into_iter().collect::<HashMap<_, _>>(),

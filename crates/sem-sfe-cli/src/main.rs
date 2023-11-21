@@ -101,12 +101,9 @@ fn main() {
             } else {
                 (fix_system, HashMap::default())
             };
-            let composed_system =
-                sem_sfe_algorithm::ast::symbolic_moves_dag::SymbolicExistsMoves::new(
-                    &fix_system.0,
-                    &moves_system,
-                    &basis,
-                );
+            let mut composed_system =
+                sem_sfe_algorithm::ast::symbolic_moves_dag::SymbolicExistsMoves::default();
+            composed_system.compose(&fix_system.0, &moves_system, &basis);
             let preproc_time = start.elapsed();
 
             let pos = (
