@@ -28,10 +28,11 @@ pub fn symbolic_moves_parser<'a>(
     let basis_parser = basis.iter().map(|str| just(str.clone()).padded()).collect::<Vec<_>>();
 
     let logic_formula = recursive(|logic_formula| {
-        let base_elem =
-            (choice(basis_parser.clone()).then_ignore(just(',')).then(text::int(10).padded()))
-                .delimited_by(just('['), just(']'))
-                .map(|(base, int)| LogicFormula::BasisElem(base, int.parse().unwrap()));
+        let base_elem = (choice(basis_parser.clone())
+            .then_ignore(just(','))
+            .then(text::int(10).padded()))
+        .delimited_by(just('['), just(']'))
+        .map(|(base, int)| LogicFormula::BasisElem(base, int.parse::<usize>().unwrap() - 1));
 
         let truth = text::keyword("true").map(|_| LogicFormula::True);
         let falsehood = text::keyword("false").map(|_| LogicFormula::False);

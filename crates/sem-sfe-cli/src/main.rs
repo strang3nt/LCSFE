@@ -118,14 +118,14 @@ fn main() {
                                 panic!("Cannot find variable with index {}", position)
                             }) == &fix_eq.var
                             {
-                                Some(i + 1)
+                                Some(i)
                             } else {
                                 None
                             }
                         })
                         .unwrap_or_else(|| panic!("Cannot find variable with index {}", position))
                 } else {
-                    position
+                    position - 1
                 },
             );
 

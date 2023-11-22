@@ -76,14 +76,9 @@ impl<'a> LocalAlgorithm<'a> {
                     self.explore(pp, pl, assumptions, decisions)
                 }
                 Position::Eve(x @ EvePos { b, i }) => {
-                    let f = self.symbolic_moves.get_formula(*b, *i - 1);
-                    let (new_formula, new_assumpt) = self.reduce(
-                        &f,
-                        kp.clone(),
-                        &decisions,
-                        &Some((x, play_data.k.clone())),
-                        &pl,
-                    );
+                    let f = self.symbolic_moves.get_formula(*b, *i);
+                    let (new_formula, new_assumpt) =
+                        self.reduce(&f, &kp, &decisions, (x, &play_data.k), &pl);
                     assumptions.union(new_assumpt);
                     if let Some(new_pos) = self.next_move(&new_formula) {
                         pl.push((play_data, (AltMoves::Eve(new_formula), kp.clone())));
@@ -102,7 +97,7 @@ impl<'a> LocalAlgorithm<'a> {
     fn is_empty(&self, PlayData { pos: c, .. }: &PlayData) -> bool {
         match c {
             Position::Eve(EvePos { b, i }) => {
-                SymbolicExistsMoves::is_formula_false(&self.symbolic_moves.get_formula(*b, *i - 1))
+                SymbolicExistsMoves::is_formula_false(&self.symbolic_moves.get_formula(*b, *i))
             }
             Position::Adam(AdamPos { x }) => x.iter().all(BTreeSet::is_empty),
         }
@@ -117,26 +112,20 @@ impl<'a> LocalAlgorithm<'a> {
     ) -> Player {
         if let Some((play_data, pi)) = pl.pop() {
             if let (Some(pos), Some(pip)) = match (&play_data.pos, pi) {
-                (_, (AltMoves::Adam(it), ref kp))
+                (_, (AltMoves::Adam(mut it), kp))
                     if Position::get_controller(&play_data.pos) != p =>
                 {
-                    let mut it = it.peekable();
-                    if it.peek().is_some() {
-                        (it.next(), Some((AltMoves::Adam(Box::new(it)), kp.clone())))
+                    if let Some(pos) = it.next() {
+                        (Some(pos), Some((AltMoves::Adam(Box::new(it)), kp.clone())))
                     } else {
                         (None, None)
                     }
                 }
-                (Position::Eve(ref x), (AltMoves::Eve(ref f), ref kp))
+                (Position::Eve(x), (AltMoves::Eve(f), kp))
                     if Position::get_controller(&play_data.pos) != p =>
                 {
-                    let (fp, new_assumpt) = self.reduce(
-                        f,
-                        kp.clone(),
-                        &decisions,
-                        &Some((&x, play_data.k.clone())),
-                        &pl,
-                    );
+                    let (fp, new_assumpt) =
+                        self.reduce(&f, &kp, &decisions, (&x, &play_data.k), &pl);
                     assumptions.union(new_assumpt);
 
                     if let Some(new_pos) = self.next_move(&fp).map(Position::Adam) {
@@ -163,6 +152,13 @@ impl<'a> LocalAlgorithm<'a> {
                 self.backtrack(p, pl, assumptions, decisions)
             }
         } else {
+            println!(
+                "{} assumption: {:?}\n{} assumption: {:?}",
+                &p,
+                assumptions.get_p(&p),
+                &Player::get_opponent(&p),
+                assumptions.get_p(&Player::get_opponent(&p))
+            );
             p
         }
     }
@@ -178,9 +174,11 @@ impl<'a> LocalAlgorithm<'a> {
 
     #[inline(always)]
     fn universal_move(AdamPos { x }: AdamPos) -> Box<dyn Iterator<Item = Position>> {
-        Box::new(x.into_iter().enumerate().flat_map(|(i, x_i)| {
-            x_i.into_iter().map(move |b| Position::Eve(EvePos { b, i: i + 1 }))
-        }))
+        Box::new(
+            x.into_iter()
+                .enumerate()
+                .flat_map(|(i, x_i)| x_i.into_iter().map(move |b| Position::Eve(EvePos { b, i }))),
+        )
     }
 
     #[inline(always)]
@@ -262,9 +260,9 @@ impl<'a> LocalAlgorithm<'a> {
     fn reduce(
         &self,
         f: &Rc<Node<FormulaOperator>>,
-        k: Rc<Vec<u32>>,
+        k: &Rc<Vec<u32>>,
         decisions: &PositionCounterSet<Instant>,
-        last_move: &Option<(&EvePos, Rc<Vec<u32>>)>,
+        last_move: (&EvePos, &Rc<Vec<u32>>),
         pl: &Playlist,
     ) -> (Rc<Node<FormulaOperator>>, PositionCounterSet<Instant>) {
         let (fp, new_assumpt) = self.apply_decisions(f, k, decisions, last_move, pl);
@@ -274,9 +272,9 @@ impl<'a> LocalAlgorithm<'a> {
     fn apply_decisions(
         &self,
         f: &Rc<Node<FormulaOperator>>,
-        k: Rc<Vec<u32>>,
+        k: &Rc<Vec<u32>>,
         decisions: &PositionCounterSet<Instant>,
-        last_move: &Option<(&EvePos, Rc<Vec<u32>>)>,
+        (eve_pos, kp): (&EvePos, &Rc<Vec<u32>>),
         pl: &Playlist,
     ) -> (Rc<Node<FormulaOperator>>, PositionCounterSet<Instant>) {
         match f.deref() {
@@ -313,36 +311,26 @@ impl<'a> LocalAlgorithm<'a> {
                     let mut new_assumpt = PositionCounterSet::new();
                     new_assumpt.get_mut_p(&Player::Adam).insert(play_data.clone(), Instant::now());
                     (self.symbolic_moves.get_false_atom(), new_assumpt)
-                } else if let Some((eve_pos, kp)) = last_move {
-                    if &eve_pos.b == b && i == &eve_pos.i && self.counter_le_eve(&k, kp) {
-                        let mut new_assumpt = PositionCounterSet::new();
-                        new_assumpt.get_mut_p(&Player::Adam).insert(
-                            PlayData {
-                                pos: Position::Eve(EvePos {
-                                    b: eve_pos.b.to_owned(),
-                                    i: eve_pos.i,
-                                }),
-                                k: kp.clone(),
-                            },
-                            Instant::now(),
-                        );
-                        (self.symbolic_moves.get_false_atom(), new_assumpt)
-                    } else if &eve_pos.b == b && i == &eve_pos.i && self.counter_le_eve(kp, &k) {
-                        let mut new_assumpt = PositionCounterSet::new();
-                        new_assumpt.get_mut_p(&Player::Eve).insert(
-                            PlayData {
-                                pos: Position::Eve(EvePos {
-                                    b: eve_pos.b.to_owned(),
-                                    i: eve_pos.i,
-                                }),
-                                k: kp.clone(),
-                            },
-                            Instant::now(),
-                        );
-                        (self.symbolic_moves.get_true_atom(), new_assumpt)
-                    } else {
-                        (f.clone(), PositionCounterSet::new())
-                    }
+                } else if &eve_pos.b == b && i == &eve_pos.i && self.counter_le_eve(&k, &kp) {
+                    let mut new_assumpt = PositionCounterSet::new();
+                    new_assumpt.get_mut_p(&Player::Adam).insert(
+                        PlayData {
+                            pos: Position::Eve(EvePos { b: eve_pos.b, i: eve_pos.i }),
+                            k: kp.clone(),
+                        },
+                        Instant::now(),
+                    );
+                    (self.symbolic_moves.get_false_atom(), new_assumpt)
+                } else if &eve_pos.b == b && i == &eve_pos.i && self.counter_le_eve(&kp, &k) {
+                    let mut new_assumpt = PositionCounterSet::new();
+                    new_assumpt.get_mut_p(&Player::Eve).insert(
+                        PlayData {
+                            pos: Position::Eve(EvePos { b: eve_pos.b, i: eve_pos.i }),
+                            k: kp.clone(),
+                        },
+                        Instant::now(),
+                    );
+                    (self.symbolic_moves.get_true_atom(), new_assumpt)
                 } else {
                     (f.clone(), PositionCounterSet::new())
                 }
@@ -353,7 +341,7 @@ impl<'a> LocalAlgorithm<'a> {
                 let mut new_formula_args = Vec::with_capacity(children.len());
                 for x_j in children {
                     let (new_formula_j, new_assumpts_j) =
-                        self.apply_decisions(x_j, k.clone(), decisions, last_move, pl);
+                        self.apply_decisions(x_j, k, decisions, (eve_pos, kp), pl);
                     new_assumpts.union(new_assumpts_j);
                     new_formula_args.push(new_formula_j);
                 }
@@ -377,7 +365,7 @@ impl<'a> LocalAlgorithm<'a> {
         let mut c: Vec<BTreeSet<usize>> = vec![BTreeSet::default(); self.fix_system.len()];
         match f.deref() {
             Node { val: FormulaOperator::Atom(BasisElem { b, i }), .. } => {
-                c[i - 1].insert(*b);
+                c[*i].insert(*b);
             }
             Node { val: FormulaOperator::And, children } if !children.is_empty() => {
                 children.iter().for_each(|j| {

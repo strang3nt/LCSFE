@@ -23,7 +23,7 @@ impl Position {
     /// where X is a move from the universal player.
     pub fn priority(c: &Position) -> usize {
         match c {
-            Position::Eve(EvePos { b: _, i }) => *i,
+            Position::Eve(EvePos { i, .. }) => *i + 1,
             Position::Adam(_) => 0,
         }
     }

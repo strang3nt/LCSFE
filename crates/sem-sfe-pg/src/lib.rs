@@ -47,14 +47,14 @@ impl SpecOutput for ParityGameSpec {
                 .enumerate()
                 .find_map(|(i, fix_eq)| {
                     if pre_proc.var_map.get(&pre_proc.var).unwrap() == &fix_eq.var {
-                        Some(i + 1)
+                        Some(i)
                     } else {
                         None
                     }
                 })
                 .unwrap()
         } else {
-            self.position + 1
+            self.position
         };
 
         let algo =

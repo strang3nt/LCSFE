@@ -19,36 +19,34 @@ pub struct SymbolicExistsMoves {
     // phi(a)(1)
     // symbolic_moves[0 * 4 + 0]
     basis_map: BiMap<usize, String>,
+    m: usize,
 
     basis_elem_node: Vec<Rc<Node<FormulaOperator>>>,
     true_node: Rc<Node<FormulaOperator>>,
-    false_node: Rc<Node<FormulaOperator>>
+    false_node: Rc<Node<FormulaOperator>>,
 }
 
 impl SymbolicExistsMoves {
-
     pub fn default() -> SymbolicExistsMoves {
-        SymbolicExistsMoves { 
-            symbolic_moves: vec![], 
+        SymbolicExistsMoves {
+            symbolic_moves: vec![],
+            m: 0,
             basis_map: BiMap::default(),
             basis_elem_node: vec![],
             true_node: Rc::new(Node { val: FormulaOperator::And, children: vec![] }),
-            false_node: Rc::new(Node { val: FormulaOperator::Or, children: vec![] }) 
+            false_node: Rc::new(Node { val: FormulaOperator::Or, children: vec![] }),
         }
     }
 
-    pub fn compose(
-        &mut self,
-        equations: &[FixEq],
-        moves: &NotComposedMoves,
-        basis: &[String],
-    ) {
-
-
+    pub fn compose(&mut self, equations: &[FixEq], moves: &NotComposedMoves, basis: &[String]) {
+        self.m = equations.len();
         let mut basis_elem_nodes = Vec::with_capacity(basis.len() * equations.len());
         for i in 0..equations.len() {
             for b in 0..basis.len() {
-                basis_elem_nodes.push(Rc::new(Node { val: FormulaOperator::Atom(BasisElem { b, i: i + 1 }), children: vec![]}))
+                basis_elem_nodes.push(Rc::new(Node {
+                    val: FormulaOperator::Atom(BasisElem { b, i }),
+                    children: vec![],
+                }))
             }
         }
         self.basis_elem_node = basis_elem_nodes;
@@ -64,8 +62,6 @@ impl SymbolicExistsMoves {
         }
 
         self.symbolic_moves = symbolic_moves_composed;
-        
-
     }
 
     #[inline(always)]
@@ -82,9 +78,8 @@ impl SymbolicExistsMoves {
     }
 
     pub fn get_basis_elem_node(&self, b: usize, i: usize) -> Rc<Node<FormulaOperator>> {
-        self.basis_elem_node[ i * self.basis_map.len() + b].clone()
+        self.basis_elem_node[i * self.basis_map.len() + b].clone()
     }
-
 
     #[inline]
     fn compose_moves(
@@ -108,7 +103,7 @@ impl SymbolicExistsMoves {
                             i,
                             moves,
                             &Rc::new(Node {
-                                val: FormulaOperator::Atom(BasisElem { b: b_i, i: 1 }),
+                                val: FormulaOperator::Atom(BasisElem { b: b_i, i: 0 }),
                                 children: vec![],
                             }),
                         ),
@@ -117,7 +112,7 @@ impl SymbolicExistsMoves {
                             i,
                             moves,
                             &Rc::new(Node {
-                                val: FormulaOperator::Atom(BasisElem { b: b_i, i: 2 }),
+                                val: FormulaOperator::Atom(BasisElem { b: b_i, i: 1 }),
                                 children: vec![],
                             }),
                         ),
@@ -128,33 +123,28 @@ impl SymbolicExistsMoves {
 
             i @ ExpFixEq::Operator(op, _) => {
                 let n = Rc::new(self.from_formula_to_tree(
-                    moves.get_formula(self.basis_map.get_by_left(&b_i).unwrap(), op)
+                    moves.get_formula(self.basis_map.get_by_left(&b_i).unwrap(), op),
                 ));
                 self.subst(equations, i, moves, &n)
             }
 
-            ExpFixEq::Id(var) => {
-
-                self.get_basis_elem_node(b_i, Self::projection(equations, var))
-            }
+            ExpFixEq::Id(var) => self.get_basis_elem_node(b_i, Self::projection(equations, var)),
         }
     }
 
     #[inline]
-    fn from_formula_to_tree(
-        &self,
-        formula: &OldLogicFormula
-    ) -> Rc<Node<FormulaOperator>> {
+    fn from_formula_to_tree(&self, formula: &OldLogicFormula) -> Rc<Node<FormulaOperator>> {
         match formula {
             OldLogicFormula::BasisElem(b, i) => {
-                self.get_basis_elem_node(*self.basis_map.get_by_right(b).unwrap(), i - 1)
+                self.get_basis_elem_node(*self.basis_map.get_by_right(b).unwrap(), *i)
             }
-            i @ OldLogicFormula::True | i @ OldLogicFormula::False =>
+            i @ OldLogicFormula::True | i @ OldLogicFormula::False => {
                 if matches!(i, OldLogicFormula::True) {
                     self.true_node.clone()
                 } else {
                     self.false_node.clone()
-                },
+                }
+            }
             i @ OldLogicFormula::Conj(x) | i @ OldLogicFormula::Disj(x) => {
                 let n = Node::<FormulaOperator> {
                     val: if matches!(i, OldLogicFormula::Conj(_)) {
@@ -175,7 +165,7 @@ impl SymbolicExistsMoves {
         equations: &[FixEq],
         sub_exp: &ExpFixEq,
         moves: &NotComposedMoves,
-        curr_formula: &Rc<Node<FormulaOperator>>
+        curr_formula: &Rc<Node<FormulaOperator>>,
     ) -> Rc<Node<FormulaOperator>> {
         match curr_formula.deref() {
             Node { val: FormulaOperator::Atom(BasisElem { b, i }), .. } => {
@@ -187,7 +177,7 @@ impl SymbolicExistsMoves {
                     ExpFixEq::Id(_) => vec![sub_exp.clone()],
                 };
 
-                self.compose_moves(equations, &args[i - 1], moves, *b)
+                self.compose_moves(equations, &args[*i], moves, *b)
             }
             Node { val: val @ FormulaOperator::And, children, .. }
             | Node { val: val @ FormulaOperator::Or, children, .. } => {
@@ -271,7 +261,7 @@ impl SymbolicExistsMoves {
                 children.join(if matches!(val, FormulaOperator::And) { " and " } else { " or " })
             }
             Node { val: FormulaOperator::Atom(BasisElem { b, i }), .. } => {
-                format!("[{}, {}]", self.basis_map.get_by_left(b).unwrap(), i)
+                format!("[{}, {}]", self.basis_map.get_by_left(b).unwrap(), i + 1)
             }
             Node { val, .. } => {
                 if matches!(val, FormulaOperator::And) {
@@ -311,7 +301,7 @@ impl Display for SymbolicExistsMoves {
             .enumerate()
             .map(|(i, x)| {
                 let b_i = self.basis_map.get_by_left(&(i % self.basis_map.len())).unwrap();
-                format!("phi({})({}) = {}", b_i, i, self.print_logic_formula(x))
+                format!("phi({})({}) = {}", b_i, (i % self.m) + 1, self.print_logic_formula(x))
             })
             .collect();
         write!(f, "{}", l.join(";\n"))
