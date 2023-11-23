@@ -151,16 +151,7 @@ impl<'a> LocalAlgorithm<'a> {
                 decisions.get_mut_p(&p).insert(play_data, decision_time);
                 self.backtrack(p, pl, assumptions, decisions)
             }
-        } else {
-            println!(
-                "{} assumption: {:?}\n{} assumption: {:?}",
-                &p,
-                assumptions.get_p(&p),
-                &Player::get_opponent(&p),
-                assumptions.get_p(&Player::get_opponent(&p))
-            );
-            p
-        }
+        } else { p }
     }
 
     #[inline(always)]

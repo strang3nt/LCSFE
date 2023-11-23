@@ -63,8 +63,7 @@ fn instantiate_diamond(
             formulas[fun_map.get(&format!("diamond_{}", act)).unwrap() * basis_map.len()
                 + basis_map.get(&basis_elem.to_string()).unwrap()] = LogicFormula::Disj(
                 nodes
-                    .enumerate()
-                    .map(|(i, n)| LogicFormula::BasisElem(n.to_string(), i + 1))
+                    .map(|n| LogicFormula::BasisElem(n.to_string(), 0))
                     .collect::<Vec<_>>(),
             );
         }
@@ -95,8 +94,7 @@ fn instantiate_box(
             formulas[fun_map.get(&format!("box_{}", act)).unwrap() * basis_map.len()
                 + basis_map.get(&basis_elem.to_string()).unwrap()] = LogicFormula::Conj(
                 nodes
-                    .enumerate()
-                    .map(|(i, n)| LogicFormula::BasisElem(n.to_string(), i + 1))
+                    .map(|n| LogicFormula::BasisElem(n.to_string(), 0))
                     .collect::<Vec<_>>(),
             );
         }
@@ -147,8 +145,7 @@ pub fn mucalc_to_fix_system(
 ///  - respectively, if there is a box, diamond, true, false syntax elements.
 ///
 /// The goal is to know the shape of the formula, in order to build the fixpoint
-/// system and to build the SymbolicExistsMoves struct, in a way that it is as
-/// small as possible.
+/// system and to build the SymbolicExistsMoves struct.
 fn preproc_formula(formula: &MuCalc) -> (u32, HashSet<String>) {
     match formula {
         MuCalc::True => {

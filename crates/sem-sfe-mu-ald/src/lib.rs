@@ -69,7 +69,7 @@ impl SpecOutput for MuAld {
 
         let start = Instant::now();
         let result =
-            local_algorithm.local_check(self.state.to_owned(), local_algorithm.fix_system.len());
+            local_algorithm.local_check(self.state.to_owned(), local_algorithm.fix_system.len() - 1);
         let algorithm_time = start.elapsed();
 
         let result = match result {
