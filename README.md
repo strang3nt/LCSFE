@@ -11,6 +11,6 @@ The user should to be familiar with the following concepts:
 
 - systems of fixpoint equations, and complete lattices;
 - parity games;
-- progress measures and selections;
+- selections;
 - upwards-closure, and a symbolic representation for upwards closed sets, namely,
   the symbolic exists-moves.
