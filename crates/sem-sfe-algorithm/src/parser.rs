@@ -29,7 +29,7 @@ impl fmt::Display for ParserError {
 }
 
 use crate::ast::fixpoint_system::FixEq;
-use crate::ast::symbolic_exists_moves::SymbolicExistsMove;
+use crate::ast::symbolic_moves::SymbolicExistsMoves;
 use chumsky::prelude::*;
 
 pub fn parse_basis(src: String) -> Result<Vec<String>, Vec<ParserError>> {
@@ -40,17 +40,12 @@ pub fn parse_symbolic_system(
     arity: &[(String, usize)],
     basis: &[String],
     src: String,
-) -> Result<Vec<SymbolicExistsMove>, ParserError> {
-    moves_parser::symbolic_moves_parser(arity, basis).parse(src).map_err(
-        |errs| {
-            ParserError::new(
-                errs.into_iter()
-                    .map(|e| e.to_string())
-                    .collect::<Vec<String>>()
-                    .join("\n- "),
-            )
-        },
-    )
+) -> Result<SymbolicExistsMoves, ParserError> {
+    moves_parser::symbolic_moves_parser(arity, basis).parse(src).map_err(|errs| {
+        ParserError::new(
+            errs.into_iter().map(|e| e.to_string()).collect::<Vec<String>>().join("\n- "),
+        )
+    })
 }
 
 pub fn parse_fixpoint_system(
@@ -59,23 +54,15 @@ pub fn parse_fixpoint_system(
 ) -> Result<Vec<FixEq>, ParserError> {
     eq_system_parser::eq_system_parser(arity).parse(src).map_err(|errs| {
         ParserError::new(
-            errs.into_iter()
-                .map(|e| e.to_string())
-                .collect::<Vec<String>>()
-                .join("\n- "),
+            errs.into_iter().map(|e| e.to_string()).collect::<Vec<String>>().join("\n- "),
         )
     })
 }
 
-pub fn parse_fun_arity(
-    src: String,
-) -> Result<Vec<(String, usize)>, ParserError> {
+pub fn parse_fun_arity(src: String) -> Result<Vec<(String, usize)>, ParserError> {
     arity_parser::arity_parser().parse(src).map_err(|errs| {
         ParserError::new(
-            errs.into_iter()
-                .map(|e|  e.to_string())
-                .collect::<Vec<String>>()
-                .join("\n- "),
+            errs.into_iter().map(|e| e.to_string()).collect::<Vec<String>>().join("\n- "),
         )
     })
 }

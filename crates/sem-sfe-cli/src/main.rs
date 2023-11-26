@@ -1,19 +1,16 @@
-use std::{collections::HashMap, io::BufReader, time::Instant};
+use std::{io::BufReader, time::Instant};
 
 use clap::{Parser, Subcommand};
-use sem_sfe_algorithm::{
-    algorithm::{EvePos, Position},
-    normalizer::normalize_system,
-};
-use sem_sfe_common::{
-    InputFlags, PreProcOutput, SpecOutput, VerificationOutput,
-};
+use rustc_hash::FxHashMap as HashMap;
+use sem_sfe_algorithm::normalizer::normalize_system;
+use sem_sfe_common::{InputFlags, PreProcOutput, SpecOutput, VerificationOutput};
 use sem_sfe_pg::ParityGameSpec;
 
 #[derive(Debug, Parser)]
 #[command(about = "A local model checker which leverages parity games and symbolic exists-moves", long_about = None)]
 struct Cli {
-    /// If enabled, the underlying system of fixpoint equations is normalized during the preprocessing phase
+    /// If enabled, the underlying system of fixpoint equations is normalized
+    /// during the preprocessing phase
     #[arg(short, long)]
     normalize: bool,
     #[arg(short, long)]
@@ -54,11 +51,20 @@ enum Commands {
         /// A path to a file containing a parity game, in PGSolver format
         game_path: std::path::PathBuf,
 
-        /// The node from which is verified whether if the selected player has a winning strategy
+        /// The node from which is verified whether if the selected player
+        /// has a winning strategy
         node: String,
     },
     #[command(arg_required_else_help = true)]
-    MuAld { lts_ald: std::path::PathBuf, mu_calc_formula: std::path::PathBuf, state: String },
+    MuAld {
+        /// Path to a file containing an Aldebaran specification
+        lts_ald: std::path::PathBuf,
+        /// Path to a file containing a mu-calculus formula
+        mu_calc: std::path::PathBuf,
+        /// The state of the Aldebaran specification from which the
+        /// verification starts
+        state: String,
+    },
 }
 
 fn main() {
@@ -81,14 +87,10 @@ fn main() {
             let basis_src = std::fs::read_to_string(basis);
             let moves_src = std::fs::read_to_string(moves_system);
 
-            let arity =
-                sem_sfe_algorithm::parse::parse_fun_arity(arity_src.unwrap())
+            let arity = sem_sfe_algorithm::parse::parse_fun_arity(arity_src.unwrap()).unwrap();
+            let fix_system =
+                sem_sfe_algorithm::parse::parse_fixpoint_system(&arity, fix_system_src.unwrap())
                     .unwrap();
-            let fix_system = sem_sfe_algorithm::parse::parse_fixpoint_system(
-                &arity,
-                fix_system_src.unwrap(),
-            )
-            .unwrap();
 
             let var_name = fix_system
                 .iter()
@@ -97,48 +99,48 @@ fn main() {
                 .map(|(_, x)| x.var.to_owned())
                 .unwrap();
 
-            let basis =
-                sem_sfe_algorithm::parse::parse_basis(basis_src.unwrap())
+            let basis = sem_sfe_algorithm::parse::parse_basis(basis_src.unwrap()).unwrap();
+            let moves_system =
+                sem_sfe_algorithm::parse::parse_symbolic_system(&arity, &basis, moves_src.unwrap())
                     .unwrap();
-            let moves_system = sem_sfe_algorithm::parse::parse_symbolic_system(
-                &arity,
-                &basis,
-                moves_src.unwrap(),
-            )
-            .unwrap();
 
             let start = Instant::now();
 
             let fix_system = if normalize {
                 normalize_system(fix_system)
             } else {
-                (fix_system, HashMap::new())
+                (fix_system, HashMap::default())
             };
-            let composed_system = sem_sfe_algorithm::moves_compositor::compose_moves::compose_moves(&fix_system.0, &moves_system, &basis);
+            let composed_system =
+                sem_sfe_algorithm::ast::symbolic_moves_composed::SymbolicExistsMoves::compose(
+                    &fix_system.0,
+                    &moves_system,
+                    &basis,
+                );
             let preproc_time = start.elapsed();
 
-            let pos = Position::Eve(EvePos {
-                b: basis_element,
-                i: if normalize {
+            let pos = (
+                basis_element,
+                if normalize {
                     fix_system
                         .0
                         .iter()
                         .enumerate()
                         .find_map(|(i, fix_eq)| {
-                            if fix_system.1.get(&var_name).unwrap_or_else(|| panic!("Cannot find variable with index {}",
-                                 position)) == &fix_eq.var
+                            if fix_system.1.get(&var_name).unwrap_or_else(|| {
+                                panic!("Cannot find variable with index {}", position)
+                            }) == &fix_eq.var
                             {
-                                Some(i + 1)
+                                Some(i)
                             } else {
                                 None
                             }
                         })
-                        .unwrap_or_else(|| panic!("Cannot find variable with index {}",
-                           position))
+                        .unwrap_or_else(|| panic!("Cannot find variable with index {}", position))
                 } else {
-                    position
+                    position - 1
                 },
-            });
+            );
 
             let preproc = PreProcOutput {
                 preproc_time,
@@ -160,7 +162,7 @@ fn main() {
             };
 
             let start = Instant::now();
-            let result = parity_game.local_check(pos);
+            let result = parity_game.local_check(pos.0, pos.1);
             let algo_time = start.elapsed();
 
             let result = VerificationOutput {
@@ -173,28 +175,32 @@ fn main() {
 
         Commands::Pg { game_path, node } => {
             let p = ParityGameSpec::new(
-                &mut BufReader::new(
-                    std::fs::File::open(game_path.as_path()).unwrap(),
-                ),
+                &mut BufReader::new(std::fs::File::open(game_path.as_path()).unwrap()),
                 node,
             );
 
-            let preproc = p
-                .pre_proc(&InputFlags { normalize })
-                .expect("Preprocessing failed");
-            if explain {
-                preproc.print_explain();
-            } else {
-                println!("{}", preproc);
-            }
-
-            let result = p
-                .verify(&InputFlags { normalize }, &preproc)
-                .expect("Something unexpected happened");
-            println!("{}", result);
+            print_results(p, explain, InputFlags { normalize })
         }
-        Commands::MuAld { .. } => {
-            unimplemented!()
+        Commands::MuAld { lts_ald, mu_calc: fix_system, state } => {
+            let mu_ald = sem_sfe_mu_ald::MuAld::new(
+                &mut BufReader::new(std::fs::File::open(lts_ald.as_path()).unwrap()),
+                &mut BufReader::new(std::fs::File::open(fix_system.as_path()).unwrap()),
+                state,
+            );
+
+            print_results(mu_ald.unwrap(), explain, InputFlags { normalize })
         }
     };
+}
+
+fn print_results(results: impl SpecOutput, explain: bool, input_flags: InputFlags) {
+    let preproc = results.pre_proc(&input_flags).expect("Preprocessing failed");
+    if explain {
+        preproc.print_explain();
+    } else {
+        println!("{}", preproc);
+    }
+
+    let result = results.verify(&input_flags, &preproc).expect("Something unexpected happened");
+    println!("{}", result);
 }

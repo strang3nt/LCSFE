@@ -41,49 +41,31 @@ pub fn eq_system_parser(
             })
             .collect::<Vec<_>>();
 
-        let custom_op = choice(fun_arguments)
-            .map(|(name, args)| ExpFixEq::Operator(name, args));
+        let custom_op = choice(fun_arguments).map(|(name, args)| ExpFixEq::Operator(name, args));
 
-        let atom = custom_op
-            .or(var)
-            .or(expr.clone().delimited_by(just('('), just(')')));
+        let atom = custom_op.or(var).or(expr.clone().delimited_by(just('('), just(')')));
 
         let op = |c| just(c).padded();
 
         let and = atom
             .clone()
-            .then(
-                op("and")
-                    .to(ExpFixEq::And as fn(_, _) -> _)
-                    .then(atom)
-                    .repeated(),
-            )
+            .then(op("and").to(ExpFixEq::And as fn(_, _) -> _).then(atom).repeated())
             .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)));
 
-        and
-            .clone()
-            .then(
-                op("or").to(ExpFixEq::Or as fn(_, _) -> _).then(and).repeated(),
-            )
+        and.clone()
+            .then(op("or").to(ExpFixEq::Or as fn(_, _) -> _).then(and).repeated())
             .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)))
-
-        
     });
 
     let fix_type = |c| just(c).padded();
 
     let equation = text::ident()
         .padded()
-        .then(
-            fix_type("=max")
-                .to(FixType::Max)
-                .or(fix_type("=min").to(FixType::Min)),
-        )
+        .then(fix_type("=max").to(FixType::Max).or(fix_type("=min").to(FixType::Min)))
         .then(expr.clone())
         .map(|((var, fix_ty), exp)| FixEq { var, fix_ty, exp });
 
-    let system_of_equations =
-        equation.clone().separated_by(just(';')).allow_trailing().padded();
+    let system_of_equations = equation.clone().separated_by(just(';')).allow_trailing().padded();
 
     system_of_equations.then_ignore(end())
 }

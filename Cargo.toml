@@ -6,6 +6,7 @@ members = [
   "crates/sem-sfe-pg",
   "crates/sem-sfe-common",
   "crates/sem-sfe-cli",
+  "crates/sem-sfe-mu-ald"
 ]
 
 [profile.release]

@@ -1,6 +1,5 @@
-pub mod moves_compositor;
-mod parity_game;
 mod parser;
+mod powerset_game;
 
 pub mod ast;
 pub mod normalizer;
@@ -13,7 +12,7 @@ pub mod parse {
 }
 
 pub mod algorithm {
-    pub use crate::parity_game::player::Player;
-    pub use crate::parity_game::position::{AdamPos, EvePos, Position};
-    pub use crate::parity_game::LocalAlgorithm;
+    pub use crate::powerset_game::player::Player;
+    pub use crate::powerset_game::position::{AdamPos, EvePos, Position};
+    pub use crate::powerset_game::LocalAlgorithm;
 }

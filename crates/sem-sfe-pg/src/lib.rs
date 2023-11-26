@@ -1,18 +1,17 @@
 mod parser;
 mod pg;
-mod pg_to_pbe;
-
-use std::collections::HashMap;
+mod pg_to_system;
 
 use pg::PG;
 use sem_sfe_algorithm::{
-    algorithm::{EvePos, LocalAlgorithm, Player, Position},
-    moves_compositor::compose_moves,
+    algorithm::{LocalAlgorithm, Player},
+    ast::symbolic_moves::SymbolicExistsMoves as UncomposedMoves,
+    ast::symbolic_moves_composed::SymbolicExistsMoves,
     normalizer::normalize_system,
 };
-use sem_sfe_common::{
-    InputFlags, PreProcOutput, SpecOutput, VerificationOutput,
-};
+use sem_sfe_common::{InputFlags, PreProcOutput, SpecOutput, VerificationOutput};
+
+use rustc_hash::FxHashMap as HashMap;
 
 pub struct ParityGameSpec {
     pg: PG,
@@ -21,19 +20,15 @@ pub struct ParityGameSpec {
 }
 
 impl ParityGameSpec {
-    pub fn new(
-        src: &mut std::io::BufReader<std::fs::File>,
-        node: String,
-    ) -> ParityGameSpec {
+    pub fn new(src: &mut std::io::BufReader<std::fs::File>, node: String) -> ParityGameSpec {
         let mut pg = parser::parse_pg(src).unwrap();
         pg.0.sort_by(|a, b| a.0.parity.partial_cmp(&b.0.parity).unwrap());
 
-        let position = pg
-            .0
-            .iter()
-            .enumerate()
-            .find_map(|(i, x)| if x.0.name == node { Some(i) } else { None })
-            .unwrap_or_else(|| panic!("Cannot find node with name {}", node));
+        let position =
+            pg.0.iter()
+                .enumerate()
+                .find_map(|(i, x)| if x.0.name == node { Some(i) } else { None })
+                .unwrap_or_else(|| panic!("Cannot find node with name {}", node));
 
         ParityGameSpec { pg, node, position }
     }
@@ -51,29 +46,22 @@ impl SpecOutput for ParityGameSpec {
                 .iter()
                 .enumerate()
                 .find_map(|(i, fix_eq)| {
-                    if pre_proc.var_map.get(&pre_proc.var).unwrap()
-                        == &fix_eq.var
-                    {
-                        Some(i + 1)
+                    if pre_proc.var_map.get(&pre_proc.var).unwrap() == &fix_eq.var {
+                        Some(i)
                     } else {
                         None
                     }
                 })
                 .unwrap()
         } else {
-            self.position + 1
+            self.position
         };
 
-        let algo = LocalAlgorithm {
-            fix_system: &pre_proc.fix_system,
-            symbolic_moves: &pre_proc.moves,
-        };
+        let algo =
+            LocalAlgorithm { fix_system: &pre_proc.fix_system, symbolic_moves: &pre_proc.moves };
 
         let start = std::time::Instant::now();
-        let winner = algo.local_check(Position::Eve(EvePos {
-            b: "true".to_string(),
-            i: index,
-        }));
+        let winner = algo.local_check("true".to_string(), index);
         let algo_duration = start.elapsed();
 
         let winner = match winner {
@@ -87,14 +75,11 @@ impl SpecOutput for ParityGameSpec {
         })
     }
 
-    fn pre_proc(
-        &self,
-        flags: &InputFlags,
-    ) -> Result<PreProcOutput, Box<dyn std::error::Error>> {
+    fn pre_proc(&self, flags: &InputFlags) -> Result<PreProcOutput, Box<dyn std::error::Error>> {
         let basis = vec!["true".to_string()];
 
         let start = std::time::Instant::now();
-        let fix_system = pg_to_pbe::pg_to_pbe(&self.pg, pg::Player::Eve);
+        let fix_system = pg_to_system::pg_to_system(&self.pg, pg::Player::Eve);
         let var_name = fix_system
             .iter()
             .enumerate()
@@ -104,10 +89,17 @@ impl SpecOutput for ParityGameSpec {
         let fix_system = if flags.normalize {
             normalize_system(fix_system)
         } else {
-            (fix_system, HashMap::new())
+            (fix_system, HashMap::default())
         };
-        let composed_system =
-            compose_moves::compose_moves(&fix_system.0, &vec![], &basis);
+        let composed_system = SymbolicExistsMoves::compose(
+            &fix_system.0,
+            &UncomposedMoves {
+                basis_map: vec![("true".to_owned(), 0)].into_iter().collect::<HashMap<_, _>>(),
+                fun_map: HashMap::default(),
+                formulas: Vec::default(),
+            },
+            &basis,
+        );
         let preproc_duration = start.elapsed();
 
         Ok(PreProcOutput {

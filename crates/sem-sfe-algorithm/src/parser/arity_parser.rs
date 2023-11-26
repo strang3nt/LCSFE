@@ -1,7 +1,6 @@
 use chumsky::prelude::*;
 
-pub fn arity_parser(
-) -> impl Parser<char, Vec<(String, usize)>, Error = Simple<char>> {
+pub fn arity_parser() -> impl Parser<char, Vec<(String, usize)>, Error = Simple<char>> {
     let ident = text::ident().padded();
 
     let fun_arity = ident

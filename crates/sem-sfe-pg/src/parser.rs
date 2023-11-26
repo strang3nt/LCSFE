@@ -24,8 +24,7 @@ pub fn parse_pg(src: &mut BufReader<File>) -> Result<PG, Error> {
         match elem {
             Ok(str) if str.trim().is_empty() => acc,
             Ok(str) => {
-                let str: Vec<&str> =
-                    str.split_whitespace().collect::<Vec<_>>();
+                let str: Vec<&str> = str.split_whitespace().collect::<Vec<_>>();
 
                 let node = Node {
                     owner: if str[2].parse::<u32>().unwrap() == 0 {
@@ -36,19 +35,13 @@ pub fn parse_pg(src: &mut BufReader<File>) -> Result<PG, Error> {
                     name: if str.len() == 4 {
                         str[0].parse::<String>().unwrap()
                     } else {
-                        str[4]
-                            .trim_end_matches("\";")
-                            .trim_start_matches('"')
-                            .trim()
-                            .to_owned()
+                        str[4].trim_end_matches("\";").trim_start_matches('"').trim().to_owned()
                     },
                     id: str[0].parse::<u32>().unwrap(),
                     parity: str[1].parse::<u32>().unwrap(),
                 };
-                let adj_list = str[3]
-                    .split(',')
-                    .map(|x| x.parse::<usize>().unwrap())
-                    .collect::<Vec<_>>();
+                let adj_list =
+                    str[3].split(',').map(|x| x.parse::<usize>().unwrap()).collect::<Vec<_>>();
 
                 acc.map(|mut pg| {
                     pg.0.push((node, adj_list));

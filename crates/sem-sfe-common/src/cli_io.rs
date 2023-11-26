@@ -1,11 +1,12 @@
-use std::{collections::HashMap, fmt::Display, time::Duration};
+use rustc_hash::FxHashMap as HashMap;
+use std::{fmt::Display, time::Duration};
 
 use sem_sfe_algorithm::ast::{
-    fixpoint_system::FixEq, symbolic_exists_moves::SymbolicExistsMoveComposed,
+    fixpoint_system::FixEq, symbolic_moves_composed::SymbolicExistsMoves,
 };
 
 pub struct PreProcOutput {
-    pub moves: Vec<SymbolicExistsMoveComposed>,
+    pub moves: SymbolicExistsMoves,
     pub fix_system: Vec<FixEq>,
     pub var_map: HashMap<String, String>,
     pub var: String,
@@ -17,19 +18,14 @@ impl PreProcOutput {
         println!("Fixpoint system:\n");
         self.fix_system.iter().for_each(|x| println!("{};", x));
 
-        println!("\nSymbolic exists-moves:\n");
-        self.moves.iter().for_each(|x| println!("{};", x));
+        println!("\nSymbolic exists-moves:\n\n{}", self.moves);
         println!("\n{}", self)
     }
 }
 
 impl Display for PreProcOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Preprocessing took: {} sec.",
-            self.preproc_time.as_secs_f32()
-        )
+        write!(f, "Preprocessing took: {} sec.", self.preproc_time.as_secs_f32())
     }
 }
 
@@ -55,10 +51,7 @@ pub struct InputFlags {
 }
 
 pub trait SpecOutput {
-    fn pre_proc(
-        &self,
-        flags: &InputFlags,
-    ) -> Result<PreProcOutput, Box<dyn std::error::Error>>;
+    fn pre_proc(&self, flags: &InputFlags) -> Result<PreProcOutput, Box<dyn std::error::Error>>;
     /// Execute the local algorithm and return the result wrapped in a string.
     fn verify(
         &self,
