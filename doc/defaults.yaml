@@ -1,0 +1,26 @@
+from: markdown
+
+to: pdf
+
+input-files:
+  - project_structure.md
+  - installation_and_usage.md
+  - mu_ald_module.md
+  - pg_module.md
+  - comparison_and_benchmarks.md
+
+pdf-engine: pdflatex
+
+output-file: ${.}/report.pdf
+
+metadata-file: ${.}/metadata.yaml
+
+citeproc: yes
+
+bibliography: ${.}/references.bib
+
+csl: https://www.zotero.org/styles/ieee
+
+strip-comments: true
+
+number-sections: true
