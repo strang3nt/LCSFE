@@ -1,8 +1,9 @@
 # Installation
 
-You should first have a working installation of Rust and Cargo, 1.73 and above. This project has not been tested with versions of Rust below 1.73.
+You should first have a working installation of Rust and Cargo, 1.73 and above.
+This project has not been tested with versions of Rust below 1.73.
 
-To compile this project simply download it from the repository, and run
+To compile this project download it from this repository, and run
 `cargo build -r` from the terminal emulator. The compiled
 executable should be located in `sem-sfe/target/release`.
 
@@ -26,10 +27,10 @@ the preprocessing phase.
 -e or --explain
 
 : A flag that makes the program print useful information to stdout: the underlying
-system of fixpoint equations, and the symbolic existential-moves..
+system of fixpoint equations, and the composed symbolic $\exists$-moves.
 
 A `<COMMAND>` string is one of the following: `debug`, `pg`, `mu-ald`, followed
-by their respective inputs. We are going to introduce all these commands in the
+by their respective inputs. We are going to introduce these commands in the
 next sections.
 
 ## The `debug` command
@@ -42,22 +43,22 @@ The debug command has the following structure:
 `<ARITY>`
 
 : A path to a file containing definitions of functions. The file must be
-formatted as follows: each line contains a string of characters and an
-integer number. The string represents the name of a function, which
-is going to be used in the system of fixpoint equations. The integer
-represents the arity of the function. The names and and or can be
+formatted as follows: each line contains a string of characters and a
+natural number. The string represents the name of a function, which
+is going to be used in the system of fixpoint equations. The natural number
+represents the arity of the function. The names `and` and `or` can be
 declared, but will be ignored.
 
 `<FIX_SYSTEM>`
 
 : A path to a file containing the definition of a system of fixed
 point equations. A function must be an either an and or or function,
-or it must be specified in the arity file. We are going to give a precise
+or it must be specified in the arity file. We give a precise
 grammar specification in section [Input grammar specification].
 
 `<BASIS>`
 
-: A path to a file containing all the elements of the basis. Each line
+: A path to a file containing all the elements of the basis. Each new line
 must contain a string, which is an element of the basis.
 
 `<MOVES_SYSTEM>`
@@ -76,65 +77,89 @@ part of the solution of the system of fixpoint equations.
 `<INDEX>`
 
 : A number representing the equation, and thus the variable which
-is going to be substituted by the element of the basis specified.
+we want to check is above, with respect to some ordering, the basis element.
 
 ### Input grammar specification
 
 We now give the grammar, in EBNF form, for systems of fixpoint
-equations and symbolic $\exists$-moves.
+equations, symbolic $\exists$-moves, a basis and the arity specification.
 
-\grammarindent1.4in
-\begin{grammar}
-
-<EqList> ::= <Eq> <EqList> `;' | <Eq> `;'
-
-<Eq> ::= <Id> `=max' <OrExpEq> | <Id> `=min' <OrExpEq>
-
-<Atom> ::= <Id> | `(' <OrExpEq> `)' | <CustomExpEq>
-
-<AndExpEq> ::= <Atom> (`and' <Atom>)*
-
-<OrExpEq> ::= <AndExpEq> ( `or' <AndExpEq> )*
-
-<CustomExpEq> ::= <Op> `(' <OrExpEq> (`,' <OrExpEq>)* `)'
-
-<Id> ::= ( a C-style identifier )
-
-<Op> ::= ( any ASCII string )
-
-\end{grammar}
+\begin{align*}
+\nonterminal{eq\_list}\enspace &::= \enspace\nonterminal{eq}\enspace\nonterminal{eq\_list}
+  \enspace\terminal{;}\mid\nonterminal{eq}\enspace\terminal{;}\\[2mm]
+\nonterminal{eq}\enspace &::=\enspace\nonterminal{id}\enspace\terminal{=max}\enspace
+  \nonterminal{or\_exp\_eq}\mid\nonterminal{id}\enspace\terminal{=min}\enspace\nonterminal{or\_exp\_eq}\\[2mm]
+\nonterminal{atom}\enspace &::=\enspace\nonterminal{id}
+  \mid\terminal{(}\enspace\nonterminal{or\_exp\_eq}\enspace\terminal{)}
+  \mid\nonterminal{custom\_exp\_eq}\\[2mm]
+\nonterminal{and\_exp\_eq}\enspace &::= \enspace\nonterminal{atom}\enspace
+  (\terminal{and}\enspace\nonterminal{atom})^*\\[2mm]
+\nonterminal{or\_exp\_eq}\enspace &::= \enspace\nonterminal{and\_exp\_eq}\enspace
+  (\terminal{or}\enspace\nonterminal{and\_exp\_eq})^*\\[2mm]
+\nonterminal{custom\_exp\_eq}\enspace &::= \enspace\nonterminal{op}\enspace
+  \terminal{(}\enspace\nonterminal{or\_exp\_eq}\enspace(\terminal{,}\enspace
+  \nonterminal{or\_exp\_eq})^*\enspace\terminal{)}\\[2mm]
+\nonterminal{id}\enspace &::= \enspace \texttt{"}\enspace
+  (\mbox{ a C-style identifier }) \enspace \texttt{"}\\[2mm]
+\nonterminal{op}\enspace &::= \enspace \texttt{"}\enspace
+  (\mbox{ any ASCII string }) \enspace \texttt{"}
+\end{align*}
 
 The grammar above represents a system of fixpoint equations.
-Notice that the syntactic category $AndExpEq$ has a higher precedence than
-$OrExpEq$, this way we enforce the precedence of the operator and over or.
-Tokens $Id$ and $Op$ are strings, the latter represents the name of an operator
-provided by the user. If the goal is to parse $\mu$-calculus formulae, a possible
-definition for OP would be $Op \in\{diamond,box\}$.
+Notice that the syntactic category $and\_exp\_eq$ has a higher precedence than
+$or\_exp\_eq$, this way we enforce the precedence of the operator $\wedge$ over $\vee$.
+Tokens $id$ and $op$ are strings, the latter represents the name of an operator
+provided by the user. If the goal is to parse $\mu$-calculus formulae, $op$ would
+accept for example strings such as "diamond", or "box".
+Note that all operators are expressed in terms of a function, except for
+\terminal{and} and \terminal{or}, which are conveniently already provided, and
+are infix. A C-style identifier respects the following regex pattern
+`[a-zA-Z_][a-zA-Z0-9_]*`.
 
-The following EBNF grammar describes a list of symbolic $\exists$-moves:
-\grammarindent1.3in
-\begin{grammar}
+\begin{align*}
+\nonterminal{sym\_mov\_list}\enspace &::= \enspace\nonterminal{sym\_mov\_eq}\enspace\nonterminal{sym\_mov\_list}
+  \enspace\terminal{;}\mid\nonterminal{sym\_mov\_eq}\enspace\terminal{;}\\[2mm]
+\nonterminal{sym\_mov\_eq}\enspace &::= \enspace\terminal{phi}\enspace\terminal{(}
+  \enspace\nonterminal{id}\enspace\terminal{)}
+  \enspace\terminal{(}\enspace\nonterminal{num}\enspace\terminal{)}
+  \enspace\terminal{=}\enspace\nonterminal{disjunction}\\[2mm]
+\nonterminal{conjunction}\enspace &::= \enspace\nonterminal{atom}\enspace
+  (\terminal{and}\enspace\nonterminal{atom})^*\\[2mm]
+\nonterminal{disjunction}\enspace &::= \enspace\nonterminal{conjunction}\enspace
+  (\terminal{or}\enspace\nonterminal{conjunction})^*\\[2mm]
+\nonterminal{atom}\enspace &::= \enspace\terminal{[}\enspace\nonterminal{id}
+  \enspace\terminal{,}\enspace\nonterminal{num}\enspace\terminal{]}
+  \mid\terminal{true}\mid\terminal{false}\mid\terminal{(}
+  \enspace\nonterminal{disjunction}\enspace\terminal{)}\\[2mm]
+\nonterminal{id}\enspace &::= \enspace \texttt{"}\enspace
+  (\mbox{ a C-style identifier }) \enspace \texttt{"}\\[2mm]
+\nonterminal{num}\enspace &::= \enspace\Nat
+\end{align*}
 
-<SymMovList>  ::= <SymMovEq> <SymMovList> `;' | <SymMovEq> `;'
+The grammar above represents the symbolic $\exists$ moves for some operators.
+Note that, similarly to what we did for the grammar of systems of fixpoint
+equations, the conjunction operator has a greater precedence than the
+disjunction operator.
 
-<SymMovEq>    ::= `phi' `(' <Id> `)' `(' <Num> `)' `=' <Disjunction>
+We now give the grammar of a basis: it is simply a list of strings, separated
+by the new-line character `\n`.
 
-<Conjunction> ::= <Atom> (`and' <Atom>)*
+\begin{align*}
+\nonterminal{basis} \enspace &::=
+    \enspace\nonterminal{basis\_elem}\enspace\terminal{\textbackslash n}\enspace\nonterminal{basis}
+    \mid\nonterminal{basis\_elem}\\[2mm]
+\nonterminal{basis\_elem} \enspace &::= \enspace\enspace \texttt{"}\enspace
+  (\mbox{ any ASCII string }) \enspace \texttt{"}
+\end{align*}
 
-<Disjunction> ::= <Conjunction> (`or' <Conjunction>)*
+Follows the grammar specification of a file containing the name of the operators
+and their arity.
 
-<Atom>        ::= `[' <Id> `,' <Num> `]' | `true' | `false'
-\alt `(' <Disjunction> `)'
-
-<Id>          ::= ( a C-style identifier )
-
-<Num>         ::= $\mathbb{N}$
-
-\end{grammar}
-
-To parse both grammars we used a parser libray called [Chumsky](https://github.com/zesterer/chumsky).
-Chumsky is based on parser combinators, which is a parsing technique that allows
-for easy to mantain code, and unlike parser generators, no unnecessary boilerplate.
-The downside of parser combinator is that they usually have a limited support for
-left recursion, which is why both grammars were built to avoid left-recursion.
-Indirect left recursion is permitted, but in a limited way.
+\begin{align*}
+\nonterminal{arity} \enspace &::= \enspace\nonterminal{op\_name}\enspace\nonterminal{num}
+    \enspace\terminal{\textbackslash n}\enspace\nonterminal{arity}
+    \mid\nonterminal{op\_name}\enspace\nonterminal{num}\\[2mm]
+\nonterminal{op\_name}\enspace &::= \enspace \texttt{"}\enspace
+  (\mbox{ a C-style identifier }) \enspace \texttt{"}\\[2mm]
+\nonterminal{num}\enspace &::= \enspace\Nat
+\end{align*}

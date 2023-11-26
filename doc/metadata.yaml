@@ -9,7 +9,7 @@ author: Alessandro Flori
 title: |
   The `sem-sfe` manual
 
-date: December 15, 2023
+date: November 26, 2023
 
 lang: en-GB
 
@@ -17,5 +17,13 @@ toc: yes
 
 colorlinks: true
 
-header-includes:
-  - \usepackage{syntax}
+header-includes: |
+  \usepackage{float}
+  \usepackage{caption}
+  \usepackage{graphicx}
+  \newcommand{\nonterminal}[1]{\ensuremath{\langle\mathit{#1}\rangle}}
+  \newcommand{\terminal}[1]{\ensuremath{\texttt{#1}}}
+  \newcommand{\sem}[1]{\ensuremath{[\![ #1 ]\!]}}
+  \newcommand{\hide}[1]{}
+  \newcommand{\Nat}{\ensuremath{\mathbb{N}}}
+  \newcommand{\bb}[1]{\boldsymbol{#1}}

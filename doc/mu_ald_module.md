@@ -26,58 +26,57 @@ the $\mu$-calculus formula.
 
 ### Mu-calculus formulae
 
-We want to parse the following syntax:
+We want to parse the following syntax.
 
 \begin{align*}
-\varphi &::= tt  
-            \mid ff
+A &::= a \mid true \mid \neg a \\
+\varphi &::=\bb{t}
+            \mid\bb{f}
             \mid x  
             \mid \varphi\vee\varphi
             \mid \varphi \wedge \varphi
             \mid \mu x.\varphi
             \mid \nu x.\varphi
-            \mid \langle a\rangle\varphi
-            \mid [a]\varphi
+            \mid \langle A\rangle\varphi
+            \mid [A]\varphi
 \end{align*}
 
 With $a\in Act$ and $x\in PVar$.
-For the same reasons as in section [The `debug` command], we designed a grammar
-that avoids, as much as possible, left recursion.
+We designed a grammar that avoids, as much as possible, left recursion.
 The following EBNF grammar describes a $\mu$-calculus formula.
 
-\grammarindent1.3in
-\begin{grammar}
+\begin{align*}
+\nonterminal{atom} \enspace &::= \enspace \terminal{tt} \mid\terminal{ff}
+        \mid \terminal{(}\enspace\nonterminal{mu\_calc}\enspace\terminal{)}
+        \mid \nonterminal{id} \\[2mm]
+\nonterminal{modal\_op}\enspace &::= \enspace\terminal{<}\enspace\nonterminal{label}
+        \enspace\terminal{>}\enspace\nonterminal{atom}
+        \mid \enspace\terminal{[}\enspace\nonterminal{label}\enspace\terminal{]}
+        \enspace\nonterminal{atom} \\[2mm]
+\nonterminal{conjunction}\enspace &::= \enspace\nonterminal{modal\_op}\enspace
+        (\terminal{\&\&}\enspace\nonterminal{modal\_op}) \\[2mm]
+\nonterminal{disjunction}\enspace &::= \enspace\nonterminal{conjunction}\enspace
+        (\terminal{||}\enspace\nonterminal{conjunction}) \\[2mm]
+\nonterminal{fix\_op}\enspace &::= \enspace\terminal{mu}\enspace\nonterminal{id}
+        \enspace\terminal{.}\enspace\nonterminal{disjunction}
+        \mid \enspace\terminal{nu}\enspace\nonterminal{id}
+        \enspace\terminal{.}\enspace\nonterminal{disjunction} \\[2mm]
+\nonterminal{mu\_calc}\enspace &::= \enspace\nonterminal{fix\_op}
+        \mid\nonterminal{disjunction} \\[2mm]
+\nonterminal{label}\enspace &::= \enspace\terminal{true}\mid\nonterminal{id}
+        \mid\terminal{!}\enspace\nonterminal{id}\\[2mm]
+\nonterminal{id}\enspace &::= \enspace \texttt{"}\enspace
+  (\mbox{ a C-style identifier }) \enspace \texttt{"}
+\end{align*}
 
-<Atom> ::= `tt' | `ff' | `(' <MuCalc> `)'
-        | <Id>
-
-<ModalOp> ::= `<' <Label> `>' <Atom>
-        | `[' <Label> `]' <Atom>
-        | <Atom>
-
-<Conjunction> ::= <ModalOp> (`&&' <ModalOp>)*
-
-<Disjuction>  ::= <Conjunction> (`||' <Conjunction>)*
-
-<Fix> ::= | `mu' <Id> `.' <Disjunction>
-         | `nu' <Id> `.' <Disjunction>
-
-<MuCalc> ::= <Fix> | <Disjunction>
-
-<Label> ::= `true' | <Id>
-
-<Id> ::= ( a C-style identifier )
-
-\end{grammar}
-
-Morover, we designed this grammar to respect some standard conventions:
-the modal operators $\square$ and $\lozenge$ binds stronger than $\vee, \wedge$,
-and the fixpoint operators, capture everything after the `.' character.
-
-The consequence is that a formula $\mu x( (\square x) \vee\nu y(\lozenge y \wedge ff))$ can be
-written as $\mu x.\square x\vee\nu y.\lozenge y\wedge ff$, minimizing the use of
-parenthesis.
-Whenever we wish to add to a modal operator anything different from the syntactic
-categories $tt$, $ff$ or $x\in PVar$, parenthesis must be used, this is due to the
-inherent limitations of the type of parser we used. This is expressed
-by the rule `<Atom>`.
+Moreover, we designed this grammar to respect some standard conventions:
+modal operators $[a]$ and $\langle a\rangle$ bind stronger than $\vee, \wedge$,
+and the fixpoint operators capture everything after the \terminal{.} character.
+The consequence is that a formula
+$\mu x( ([a] x) \vee\nu y(\langle a\rangle y\wedge\bb{f}))$ can be
+written as $\mu x.[a] x\vee\nu y.\langle a\rangle y\wedge\bb{f}$, minimizing the
+use of parenthesis.
+Whenever we wish to add to a modal operator anything other than the syntactic
+categories $\bb{t}$, $\bb{f}$ or $x\in PVar$, parenthesis must be used, this is
+due to the inherent limitations of the type of parser we used. This is expressed
+by the rule $\nonterminal{atom}$.
