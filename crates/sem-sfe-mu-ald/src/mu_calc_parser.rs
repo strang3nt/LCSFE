@@ -5,7 +5,7 @@ use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use chumsky::prelude::*;
 use sem_sfe_algorithm::ast::{
     fixpoint_system::{ExpFixEq, FixEq, FixType},
-    symbolic_exists_moves::{LogicFormula, SymbolicExistsMoves},
+    symbolic_moves::{LogicFormula, SymbolicExistsMoves},
 };
 
 use crate::ald_parser::Lts;
@@ -62,9 +62,7 @@ fn instantiate_diamond(
         } else {
             formulas[fun_map.get(&format!("diamond_{}", act)).unwrap() * basis_map.len()
                 + basis_map.get(&basis_elem.to_string()).unwrap()] = LogicFormula::Disj(
-                nodes
-                    .map(|n| LogicFormula::BasisElem(n.to_string(), 0))
-                    .collect::<Vec<_>>(),
+                nodes.map(|n| LogicFormula::BasisElem(n.to_string(), 0)).collect::<Vec<_>>(),
             );
         }
     })
@@ -93,9 +91,7 @@ fn instantiate_box(
         } else {
             formulas[fun_map.get(&format!("box_{}", act)).unwrap() * basis_map.len()
                 + basis_map.get(&basis_elem.to_string()).unwrap()] = LogicFormula::Conj(
-                nodes
-                    .map(|n| LogicFormula::BasisElem(n.to_string(), 0))
-                    .collect::<Vec<_>>(),
+                nodes.map(|n| LogicFormula::BasisElem(n.to_string(), 0)).collect::<Vec<_>>(),
             );
         }
     })

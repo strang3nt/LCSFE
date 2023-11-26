@@ -2,7 +2,7 @@ use rustc_hash::FxHashMap as HashMap;
 
 use chumsky::prelude::*;
 
-use crate::ast::symbolic_exists_moves::{LogicFormula, SymbolicExistsMoves};
+use crate::ast::symbolic_moves::{LogicFormula, SymbolicExistsMoves};
 ///
 /// Returns a parser for the following grammar:
 ///

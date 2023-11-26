@@ -9,7 +9,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use crate::ast::fixpoint_system::{FixEq, FixType};
-use crate::ast::symbolic_moves_dag::{BasisElem, FormulaOperator, Node, SymbolicExistsMoves};
+use crate::ast::symbolic_moves_composed::{BasisElem, FormulaOperator, Node, SymbolicExistsMoves};
 use play_data::PlayData;
 use player::Player;
 use position::{AdamPos, EvePos, Position};
@@ -35,8 +35,8 @@ impl<'a> LocalAlgorithm<'a> {
         self.explore(
             PlayData { pos: c, k: Rc::new(vec![0; m]) },
             vec![],
-            PositionCounterSet::new(),
-            PositionCounterSet::new(),
+            PositionCounterSet::default(),
+            PositionCounterSet::default(),
         )
     }
 
@@ -151,7 +151,9 @@ impl<'a> LocalAlgorithm<'a> {
                 decisions.get_mut_p(&p).insert(play_data, decision_time);
                 self.backtrack(p, pl, assumptions, decisions)
             }
-        } else { p }
+        } else {
+            p
+        }
     }
 
     #[inline(always)]
@@ -280,30 +282,30 @@ impl<'a> LocalAlgorithm<'a> {
                         } else {
                             self.symbolic_moves.get_false_atom()
                         },
-                        PositionCounterSet::new(),
+                        PositionCounterSet::default(),
                     )
                 } else if let Some((play_data, _)) =
                     pl.iter().find(|(PlayData { pos, k: kp }, _)| {
                         matches!(pos, Position::Eve(EvePos { b: bp, i: ip }) if bp == b
                         && i == ip
-                        && self.counter_le_eve(kp, &k))
+                        && self.counter_le_eve(kp, k))
                     })
                 {
-                    let mut new_assumpt = PositionCounterSet::new();
+                    let mut new_assumpt = PositionCounterSet::default();
                     new_assumpt.get_mut_p(&Player::Eve).insert(play_data.clone(), Instant::now());
                     (self.symbolic_moves.get_true_atom(), new_assumpt)
                 } else if let Some((play_data, _)) =
                     pl.iter().find(|(PlayData { pos, k: kp }, _)| {
                         matches!(pos, Position::Eve(EvePos { b: bp, i: ip }) if bp == b
                         && i == ip
-                        && self.counter_le_eve(&k, kp))
+                        && self.counter_le_eve(k, kp))
                     })
                 {
-                    let mut new_assumpt = PositionCounterSet::new();
+                    let mut new_assumpt = PositionCounterSet::default();
                     new_assumpt.get_mut_p(&Player::Adam).insert(play_data.clone(), Instant::now());
                     (self.symbolic_moves.get_false_atom(), new_assumpt)
-                } else if &eve_pos.b == b && i == &eve_pos.i && self.counter_le_eve(&k, &kp) {
-                    let mut new_assumpt = PositionCounterSet::new();
+                } else if &eve_pos.b == b && i == &eve_pos.i && self.counter_le_eve(k, kp) {
+                    let mut new_assumpt = PositionCounterSet::default();
                     new_assumpt.get_mut_p(&Player::Adam).insert(
                         PlayData {
                             pos: Position::Eve(EvePos { b: eve_pos.b, i: eve_pos.i }),
@@ -312,8 +314,8 @@ impl<'a> LocalAlgorithm<'a> {
                         Instant::now(),
                     );
                     (self.symbolic_moves.get_false_atom(), new_assumpt)
-                } else if &eve_pos.b == b && i == &eve_pos.i && self.counter_le_eve(&kp, &k) {
-                    let mut new_assumpt = PositionCounterSet::new();
+                } else if &eve_pos.b == b && i == &eve_pos.i && self.counter_le_eve(kp, k) {
+                    let mut new_assumpt = PositionCounterSet::default();
                     new_assumpt.get_mut_p(&Player::Eve).insert(
                         PlayData {
                             pos: Position::Eve(EvePos { b: eve_pos.b, i: eve_pos.i }),
@@ -323,12 +325,14 @@ impl<'a> LocalAlgorithm<'a> {
                     );
                     (self.symbolic_moves.get_true_atom(), new_assumpt)
                 } else {
-                    (f.clone(), PositionCounterSet::new())
+                    (f.clone(), PositionCounterSet::default())
                 }
             }
-            Node { children, .. } if children.is_empty() => (f.clone(), PositionCounterSet::new()),
+            Node { children, .. } if children.is_empty() => {
+                (f.clone(), PositionCounterSet::default())
+            }
             Node { val, children } => {
-                let mut new_assumpts = PositionCounterSet::new();
+                let mut new_assumpts = PositionCounterSet::default();
                 let mut new_formula_args = Vec::with_capacity(children.len());
                 for x_j in children {
                     let (new_formula_j, new_assumpts_j) =

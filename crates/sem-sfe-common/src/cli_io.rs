@@ -1,7 +1,9 @@
 use rustc_hash::FxHashMap as HashMap;
 use std::{fmt::Display, time::Duration};
 
-use sem_sfe_algorithm::ast::{fixpoint_system::FixEq, symbolic_moves_dag::SymbolicExistsMoves};
+use sem_sfe_algorithm::ast::{
+    fixpoint_system::FixEq, symbolic_moves_composed::SymbolicExistsMoves,
+};
 
 pub struct PreProcOutput {
     pub moves: SymbolicExistsMoves,

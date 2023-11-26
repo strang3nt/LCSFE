@@ -29,7 +29,7 @@ impl fmt::Display for ParserError {
 }
 
 use crate::ast::fixpoint_system::FixEq;
-use crate::ast::symbolic_exists_moves::SymbolicExistsMoves;
+use crate::ast::symbolic_moves::SymbolicExistsMoves;
 use chumsky::prelude::*;
 
 pub fn parse_basis(src: String) -> Result<Vec<String>, Vec<ParserError>> {

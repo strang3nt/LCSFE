@@ -1,7 +1,7 @@
 use crate::pg::{Player, PG};
 use sem_sfe_algorithm::ast::fixpoint_system::{ExpFixEq, FixEq, FixType};
 
-pub fn pg_to_pbe(pg: &PG, p: Player) -> Vec<FixEq> {
+pub fn pg_to_system(pg: &PG, p: Player) -> Vec<FixEq> {
     pg.0.iter().fold(vec![], |mut acc, (n, adj_list)| {
         let x = format!("x_{}", n.id);
 

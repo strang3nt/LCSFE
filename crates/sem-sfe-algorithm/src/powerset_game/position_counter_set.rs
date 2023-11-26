@@ -9,7 +9,7 @@ pub struct PositionCounterSet<T> {
 }
 
 impl<T> PositionCounterSet<T> {
-    pub fn new() -> PositionCounterSet<T> {
+    pub fn default() -> PositionCounterSet<T> {
         PositionCounterSet { eve: FxHashMap::default(), adam: FxHashMap::default() }
     }
 

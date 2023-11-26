@@ -7,7 +7,7 @@ use mu_calc_parser::MuCalc;
 use rustc_hash::FxHashMap as HashMap;
 use sem_sfe_algorithm::{
     algorithm::{LocalAlgorithm, Player},
-    ast::symbolic_moves_dag::SymbolicExistsMoves,
+    ast::symbolic_moves_composed::SymbolicExistsMoves,
     normalizer::normalize_system,
 };
 use sem_sfe_common::{InputFlags, PreProcOutput, SpecOutput, VerificationOutput};
@@ -42,8 +42,7 @@ impl SpecOutput for MuAld {
         } else {
             (fix_system, HashMap::default())
         };
-        let mut moves_composed = SymbolicExistsMoves::default();
-        moves_composed.compose(
+        let moves_composed = SymbolicExistsMoves::compose(
             &fix_system,
             &moves,
             &self.lts.adj_list.iter().map(|x| x.0.to_string()).collect::<Vec<_>>(),
@@ -68,8 +67,8 @@ impl SpecOutput for MuAld {
             LocalAlgorithm { fix_system: &pre_proc.fix_system, symbolic_moves: &pre_proc.moves };
 
         let start = Instant::now();
-        let result =
-            local_algorithm.local_check(self.state.to_owned(), local_algorithm.fix_system.len() - 1);
+        let result = local_algorithm
+            .local_check(self.state.to_owned(), local_algorithm.fix_system.len() - 1);
         let algorithm_time = start.elapsed();
 
         let result = match result {

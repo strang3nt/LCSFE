@@ -9,7 +9,8 @@ use sem_sfe_pg::ParityGameSpec;
 #[derive(Debug, Parser)]
 #[command(about = "A local model checker which leverages parity games and symbolic exists-moves", long_about = None)]
 struct Cli {
-    /// If enabled, the underlying system of fixpoint equations is normalized during the preprocessing phase
+    /// If enabled, the underlying system of fixpoint equations is normalized
+    /// during the preprocessing phase
     #[arg(short, long)]
     normalize: bool,
     #[arg(short, long)]
@@ -50,11 +51,20 @@ enum Commands {
         /// A path to a file containing a parity game, in PGSolver format
         game_path: std::path::PathBuf,
 
-        /// The node from which is verified whether if the selected player has a winning strategy
+        /// The node from which is verified whether if the selected player
+        /// has a winning strategy
         node: String,
     },
     #[command(arg_required_else_help = true)]
-    MuAld { lts_ald: std::path::PathBuf, fix_system: std::path::PathBuf, state: String },
+    MuAld {
+        /// Path to a file containing an Aldebaran specification
+        lts_ald: std::path::PathBuf,
+        /// Path to a file containing a mu-calculus formula
+        mu_calc: std::path::PathBuf,
+        /// The state of the Aldebaran specification from which the
+        /// verification starts
+        state: String,
+    },
 }
 
 fn main() {
@@ -101,9 +111,12 @@ fn main() {
             } else {
                 (fix_system, HashMap::default())
             };
-            let mut composed_system =
-                sem_sfe_algorithm::ast::symbolic_moves_dag::SymbolicExistsMoves::default();
-            composed_system.compose(&fix_system.0, &moves_system, &basis);
+            let composed_system =
+                sem_sfe_algorithm::ast::symbolic_moves_composed::SymbolicExistsMoves::compose(
+                    &fix_system.0,
+                    &moves_system,
+                    &basis,
+                );
             let preproc_time = start.elapsed();
 
             let pos = (
@@ -168,7 +181,7 @@ fn main() {
 
             print_results(p, explain, InputFlags { normalize })
         }
-        Commands::MuAld { lts_ald, fix_system, state } => {
+        Commands::MuAld { lts_ald, mu_calc: fix_system, state } => {
             let mu_ald = sem_sfe_mu_ald::MuAld::new(
                 &mut BufReader::new(std::fs::File::open(lts_ald.as_path()).unwrap()),
                 &mut BufReader::new(std::fs::File::open(fix_system.as_path()).unwrap()),
