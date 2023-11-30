@@ -1,4 +1,4 @@
-# sem-sfe (Symbolic Exists-Moves for Systems of Fixpoint Equations)
+# LCSFE (Local Checking for Systems of Fixpoint Equations)
 
 This tool implements a local algorithm for verifying solutions of systems of fixpoint
 equations, and it is based on the following articles:

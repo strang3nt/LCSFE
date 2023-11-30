@@ -1,0 +1,12 @@
+[package]
+name = "lcsfe-mu-ald"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lcsfe-common =    { path = "../lcsfe-common" }
+lcsfe-algorithm = { path = "../lcsfe-algorithm" }
+chumsky = "0.9.2"
+rustc-hash = "1.1.0"

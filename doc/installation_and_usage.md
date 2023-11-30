@@ -5,14 +5,14 @@ This project has not been tested with versions of Rust below 1.73.
 
 To compile this project download it from this repository, and run
 `cargo build -r` from the terminal emulator. The compiled
-executable should be located in `sem-sfe/target/release`.
+executable should be located in `lcsfe/target/release`.
 
 # Usage
 
 This application is a command line interface.
-An invocation of `sem-sfe` looks like this:
+An invocation of `LCSFE` looks like this:
 
-    sem-sfe-cli [OPTIONS] <COMMAND>
+    lcsfe-cli [OPTIONS] <COMMAND>
 
 where `[OPTION]` is a list of flags and `<COMMAND>` is the name of the type of
 input we are going to feed to the tool.
@@ -37,7 +37,7 @@ next sections.
 
 The debug command has the following structure:
 
-    sem-sfe-cli [OPTIONS] debug <ARITY>\
+    lcsfe-cli [OPTIONS] debug <ARITY>\
     <FIX_SYSTEM> <BASIS> <MOVES_SYSTEM> <ELEMENT_OF_BASIS> <INDEX>
 
 `<ARITY>`

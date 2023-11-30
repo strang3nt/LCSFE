@@ -2,11 +2,11 @@
 resolver = "2"
 
 members = [
-  "crates/sem-sfe-algorithm",
-  "crates/sem-sfe-pg",
-  "crates/sem-sfe-common",
-  "crates/sem-sfe-cli",
-  "crates/sem-sfe-mu-ald"
+  "crates/lcsfe-algorithm",
+  "crates/lcsfe-pg",
+  "crates/lcsfe-common",
+  "crates/lcsfe-cli",
+  "crates/lcsfe-mu-ald"
 ]
 
 [profile.release]

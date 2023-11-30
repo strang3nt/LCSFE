@@ -1,12 +1,12 @@
 ## The `pg` command
 
-The `pg` command uses the `sem-sfe-pg` module, to build a system of fixed point
+The `pg` command uses the `lcsfe-pg` module, to build a system of fixed point
 equations and the symbolic $\exists$-moves from a parity game, and verify whether
 if the given node is winning for player $\exists$ (or player 0, or player Even).
 
 This is a typical command for the `pg` command:
 
-    sem-sfe-cli [OPTIONS] pg <GAME_PATH> <NODE>
+    lcsfe-cli [OPTIONS] pg <GAME_PATH> <NODE>
 
 `<GAME_PATH>`
 

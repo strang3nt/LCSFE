@@ -1,10 +1,10 @@
 ## The `mu-ald` command
 
-The `mu-ald` command calls the `sem-sfe-mu-ald` module. It produces a fixpoint
+The `mu-ald` command calls the `lcsfe-mu-ald` module. It produces a fixpoint
 system and a list of symbolic $\exists$-moves from the given labelled
 transition system, and $\mu$-calculus formula.
 
-    sem-sfe-cli [OPTIONS] mu-ald <LTS_ALD> <MU_CALC_FORMULA> <STATE>
+    lcsfe-cli [OPTIONS] mu-ald <LTS_ALD> <MU_CALC_FORMULA> <STATE>
 
 `<LTS_ALD>`
 
